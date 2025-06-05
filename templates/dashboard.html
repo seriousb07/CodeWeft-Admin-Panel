@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Change Password</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #e6f0fa;
+        }
+
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
+            color: white;
+            padding: 30px 20px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar h2 {
+            font-size: 26px;
+            margin-bottom: 30px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar ul li {
+            margin: 10px 0;
+            padding: 12px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar ul li:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px);
+        }
+
+        .sidebar ul li.active {
+            background-color: #ffffff;
+            color: #4fb4e2;
+            font-weight: 600;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 40px;
+        }
+
+        .header {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .form-container {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            max-width: 500px;
+            margin: 0 auto;
+            transition: transform 0.3s ease;
+        }
+
+        .form-container:hover {
+            transform: translateY(-5px);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #2c3e50;
+            font-size: 16px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #4fb4e2;
+            box-shadow: 0 0 5px rgba(79, 180, 226, 0.3);
+        }
+
+        button {
+            background-color: #4fb4e2;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #3a9ccc;
+            transform: translateY(-2px);
+        }
+
+        #message {
+            color: #28a745;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        #error-message {
+            color: #dc3545;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 80px;
+                padding: 20px 10px;
+            }
+
+            .sidebar h2 {
+                font-size: 20px;
+            }
+
+            .sidebar ul li {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .main-content {
+                margin-left: 80px;
+                padding: 20px;
+            }
+
+            .form-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <h2>Admin Panel</h2>
+            <ul>
+                <li>Dashboard</li>
+                <li>Edit Profile</li>
+                <li>Departments</li>
+                <li>Doctors</li>
+                <li class="active">Change Password</li>
+                <li>Logout</li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h1>Change Password</h1>
+            </div>
+            <div class="form-container">
+                <form id="change-password-form">
+                    <div class="form-group">
+                        <label for="old_password">Old Password</label>
+                        <input type="password" id="old_password" name="old_password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">New Password</label>
+                        <input type="password" id="new_password" name="new_password" required>
+                    </div>
+                    <button type="submit">Change Password</button>
+                </form>
+                <p id="message" style="display: none;"></p>
+                <p id="error-message" style="display: none;"></p>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById("change-password-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const old_password = document.getElementById("old_password").value;
+            const new_password = document.getElementById("new_password").value;
+            const message = document.getElementById("message");
+            const errorMessage = document.getElementById("error-message");
+
+            try {
+                const response = await fetch("/change-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ old_password, new_password })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    message.textContent = data.message;
+                    message.style.display = "block";
+                    errorMessage.style.display = "none";
+                } else {
+                    errorMessage.textContent = data.detail;
+                    errorMessage.style.display = "block";
+                    message.style.display = "none";
+                }
+            } catch (error) {
+                errorMessage.textContent = "An error occurred. Please try again.";
+                errorMessage.style.display = "block";
+                message.style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>
