@@ -1,230 +1,216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logout</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Arial, sans-serif;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logout</title>
+  <style>
+    /* (Your existing styles here, no changes needed) */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
 
-        body {
-            background-color: #e6f0fa;
-        }
+    body {
+      background-color: #e6f0fa;
+    }
 
-        .dashboard-container {
-            display: flex;
-            min-height: 100vh;
-        }
+    .dashboard-container {
+      display: flex;
+      min-height: 100vh;
+    }
 
-        .sidebar {
-            width: 280px;
-            background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
-            color: white;
-            padding: 30px 20px;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-            position: fixed;
-            height: 100%;
-            transition: width 0.3s ease;
-        }
+    .sidebar {
+      width: 280px;
+      background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
+      color: white;
+      padding: 30px 20px;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      position: fixed;
+      height: 100%;
+      transition: width 0.3s ease;
+    }
 
-        .sidebar h2 {
-            font-size: 26px;
-            margin-bottom: 30px;
-            text-align: center;
-            letter-spacing: 1px;
-        }
+    .sidebar h2 {
+      font-size: 26px;
+      margin-bottom: 30px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
 
-        .sidebar ul {
-            list-style: none;
-        }
+    .sidebar ul {
+      list-style: none;
+    }
 
-        .sidebar ul li {
-            margin: 10px 0;
-            padding: 12px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    .sidebar ul li {
+      margin: 10px 0;
+      padding: 12px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-        .sidebar ul li:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-            transform: translateX(5px);
-        }
+    .sidebar ul li:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+      transform: translateX(5px);
+    }
 
-        .sidebar ul li.active {
-            background-color: #ffffff;
-            color: #4fb4e2;
-            font-weight: 600;
-        }
+    .sidebar ul li.active {
+      background-color: #ffffff;
+      color: #4fb4e2;
+      font-weight: 600;
+    }
 
-        .main-content {
-            flex: 1;
-            margin-left: 280px;
-            padding: 40px;
-        }
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 40px;
+    }
 
-        .header {
-            background-color: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .header {
+      background-color: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        .header h1 {
-            color: #2c3e50;
-            font-size: 32px;
-            font-weight: 600;
-        }
+    .header h1 {
+      color: #2c3e50;
+      font-size: 32px;
+      font-weight: 600;
+    }
 
-        .logout-container {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            max-width: 500px;
-            margin: 0 auto;
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
+    .logout-container {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      max-width: 500px;
+      margin: 0 auto;
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
 
-        .logout-container:hover {
-            transform: translateY(-5px);
-        }
+    .logout-container:hover {
+      transform: translateY(-5px);
+    }
 
-        .logout-container p {
-            color: #555;
-            font-size: 16px;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
+    .logout-container p {
+      color: #555;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
 
-        button {
-            background-color: #4fb4e2;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            width: 100%;
-        }
+    button {
+      background-color: #4fb4e2;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      width: 100%;
+    }
 
-        button:hover {
-            background-color: #3a9ccc;
-            transform: translateY(-2px);
-        }
+    button:hover {
+      background-color: #3a9ccc;
+      transform: translateY(-2px);
+    }
 
-        #message {
-            color: #28a745;
-            margin-top: 20px;
-            text-align: center;
-            font-size: 16px;
-        }
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 80px;
+        padding: 20px 10px;
+      }
 
-        #error-message {
-            color: #dc3545;
-            margin-top: 20px;
-            text-align: center;
-            font-size: 16px;
-        }
+      .sidebar h2 {
+        font-size: 20px;
+      }
 
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 80px;
-                padding: 20px 10px;
-            }
+      .sidebar ul li {
+        font-size: 14px;
+        padding: 10px;
+      }
 
-            .sidebar h2 {
-                font-size: 20px;
-            }
+      .main-content {
+        margin-left: 80px;
+        padding: 20px;
+      }
 
-            .sidebar ul li {
-                font-size: 14px;
-                padding: 10px;
-            }
-
-            .main-content {
-                margin-left: 80px;
-                padding: 20px;
-            }
-
-            .logout-container {
-                padding: 20px;
-            }
-        }
-    </style>
+      .logout-container {
+        padding: 20px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <div class="sidebar">
-            <h2>Admin Panel</h2>
-            <ul>
-                <li><a href="admin_dashboard.html">Dashboard</a></li>
-                <li><a href="edit_profile.html">Edit Profile</a></li>
-                <li><a href="departments.html">Departments</a></li>
-                <li><a href="doctors.html">Doctors</a></li>
-                <li><a href="change_password.html">Change Password</a></li>
-                <li class="active"><a href="logout.html">Logout</a></li>
-            </ul>
-        </div>
-        <div class="main-content">
-            <div class="header">
-                <h1>Logout</h1>
-            </div>
-            <div class="logout-container">
-                <p>Are you sure you want to log out of the Admin Panel?</p>
-                <button id="logout-button">Confirm Logout</button>
-                <p id="message" style="display: none;"></p>
-                <p id="error-message" style="display: none;"></p>
-            </div>
-        </div>
+  <div class="dashboard-container">
+    <div class="sidebar">
+      <h2>Admin Panel</h2>
+      <ul>
+        <li onclick="navigateTo('/dashboard')">Dashboard</li>
+        <li onclick="navigateTo('/edit-profile')">Edit Profile</li>
+        <li onclick="navigateTo('/departments')">Departments</li>
+        <li onclick="navigateTo('/doctors')">Doctors</li>
+        <li onclick="navigateTo('/change-password')">Change Password</li>
+        <li class="active" onclick="navigateTo('/logout')">Logout</li>
+      </ul>
     </div>
-    <script>
-        document.getElementById("logout-button").addEventListener("click", async () => {
-            const message = document.getElementById("message");
-            const errorMessage = document.getElementById("error-message");
 
-            try {
-                const response = await fetch("/logout", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    message.textContent = data.message || "Successfully logged out!";
-                    message.style.display = "block";
-                    errorMessage.style.display = "none";
-                    // Clear session storage (client-side)
-                    sessionStorage.clear();
-                    // Redirect to login page after 1 second
-                    setTimeout(() => {
-                        window.location.href = "/login.html";
-                    }, 1000);
-                } else {
-                    errorMessage.textContent = data.detail || "Failed to log out.";
-                    errorMessage.style.display = "block";
-                    message.style.display = "none";
-                }
-            } catch (error) {
-                errorMessage.textContent = "An error occurred. Please try again.";
-                errorMessage.style.display = "block";
-                message.style.display = "none";
-            }
+    <div class="main-content">
+      <div class="header">
+        <h1>Logout</h1>
+      </div>
+
+      <div class="logout-container">
+        <p>Are you sure you want to log out of the Admin Panel?</p>
+        <button id="logout-button">Confirm Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function navigateTo(path) {
+      window.location.href = path;
+    }
+
+    document.getElementById("logout-button").addEventListener("click", async () => {
+      // Clear client-side storage if used
+      sessionStorage.clear();
+      localStorage.clear();
+
+      try {
+        // Send POST logout request to server
+        const response = await fetch("/logout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          }
         });
-    </script>
+
+        if (response.ok) {
+          // Redirect to login page after successful logout
+          window.location.href = "/";
+        } else {
+          alert("Logout failed. Please try again.");
+        }
+      } catch (error) {
+        alert("An error occurred during logout.");
+        console.error(error);
+      }
+    });
+  </script>
 </body>
 </html>

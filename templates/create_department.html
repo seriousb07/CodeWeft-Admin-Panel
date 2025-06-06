@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Department</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    body {
+      background-color: #e6f0fa;
+    }
+
+    .dashboard-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
+      color: white;
+      padding: 30px 20px;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      position: fixed;
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    .sidebar h2 {
+      font-size: 26px;
+      margin-bottom: 30px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    .sidebar ul {
+      list-style: none;
+    }
+
+    .sidebar ul li {
+      margin: 10px 0;
+      padding: 12px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar ul li:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+      transform: translateX(5px);
+    }
+
+    .sidebar ul li.active {
+      background-color: #ffffff;
+      color: #4fb4e2;
+      font-weight: 600;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 40px;
+    }
+
+    .header {
+      background-color: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      color: #2c3e50;
+      font-size: 32px;
+      font-weight: 600;
+    }
+
+    .form-container {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      max-width: 500px;
+      margin: 0 auto;
+      transition: transform 0.3s ease;
+    }
+
+    .form-container:hover {
+      transform: translateY(-5px);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 10px;
+    }
+
+    .form-group label {
+      display: block;
+      color: #2c3e50;
+      font-size: 16px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .form-group input:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: #4fb4e2;
+      box-shadow: 0 0 5px rgba(79, 180, 226, 0.3);
+    }
+
+    button {
+      background-color: #4fb4e2;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      width: 100%;
+    }
+
+    button:hover {
+      background-color: #3a9ccc;
+      transform: translateY(-2px);
+    }
+
+    #message {
+      color: #28a745;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    #error-message {
+      color: #dc3545;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .created-department {
+      background-color: #f1f5f9;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .created-department p {
+      color: #2c3e50;
+      font-size: 16px;
+      flex: 1;
+    }
+
+    .created-department button {
+      background-color: #4fb4e2;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      width: auto;
+    }
+
+    .created-department button:hover {
+      background-color: #3a9ccc;
+      transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 80px;
+        padding: 20px 10px;
+      }
+
+      .sidebar h2 {
+        font-size: 20px;
+      }
+
+      .sidebar ul li {
+        font-size: 14px;
+        padding: 10px;
+      }
+
+      .main-content {
+        margin-left: 80px;
+        padding: 20px;
+      }
+
+      .form-container {
+        padding: 20px;
+      }
+
+      .created-department {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      .created-department button {
+        width: auto;
+        align-self: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <div class="sidebar">
+      <h2>Admin Panel</h2>
+      <ul>
+        <li onclick="navigateTo('/dashboard')">Dashboard</li>
+        <li onclick="navigateTo('/edit-profile')">Edit Profile</li>
+        <li class="active" onclick="navigateTo('/departments')">Departments</li>
+        <li onclick="navigateTo('/doctors')">Doctors</li>
+        <li onclick="navigateTo('/change-password')">Change Password</li>
+        <li onclick="navigateTo('/logout')">Logout</li>
+      </ul>
+    </div>
+    <div class="main-content">
+      <div class="header">
+        <h1>Create Department</h1>
+      </div>
+      <div class="form-container">
+        <form id="create-department-form">
+          <div class="form-group">
+            <label for="name">Department Name</label>
+            <input type="text" id="name" name="name" required />
+          </div>
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" required></textarea>
+          </div>
+          <button type="submit">Create Department</button>
+        </form>
+        <p id="message" style="display: none;"></p>
+        <p id="error-message" style="display: none;"></p>
+        <div id="created-department-list">
+          <!-- Created departments will be shown here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function navigateTo(url) {
+      try {
+        window.location.href = url;
+      } catch (error) {
+        console.error("Navigation failed:", error);
+        alert("Failed to navigate to " + url);
+      }
+    }
+
+    document.getElementById("create-department-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("name").value.trim();
+      const description = document.getElementById("description").value.trim();
+      const message = document.getElementById("message");
+      const errorMessage = document.getElementById("error-message");
+      const createdDepartmentList = document.getElementById("created-department-list");
+
+      if (!name || !description) {
+        errorMessage.textContent = "All fields are required.";
+        errorMessage.style.display = "block";
+        message.style.display = "none";
+        return;
+      }
+
+      try {
+        const response = await fetch("/create-department", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          message.textContent = `${data.message} `;
+          const viewLink = document.createElement("a");
+          viewLink.href = "#";
+          viewLink.textContent = "Click here to view all";
+          viewLink.onclick = () => navigateTo("/departments");
+          message.appendChild(viewLink);
+          message.style.display = "block";
+          errorMessage.style.display = "none";
+
+          const item = document.createElement("div");
+          item.className = "created-department";
+          item.innerHTML = `
+            <p>${name} - ${description}</p>
+            <button onclick="viewDetails('${name}')">View Details</button>
+          `;
+          createdDepartmentList.appendChild(item);
+          document.getElementById("create-department-form").reset();
+        } else {
+          errorMessage.textContent = data.detail || "Something went wrong.";
+          errorMessage.style.display = "block";
+          message.style.display = "none";
+        }
+      } catch (error) {
+        errorMessage.textContent = "An error occurred. Please try again.";
+        errorMessage.style.display = "block";
+        message.style.display = "none";
+      }
+    });
+
+    function viewDetails(deptName) {
+      alert(`Viewing details for department: ${deptName}`);
+      // You can expand this function as needed
+    }
+  </script>
+</body>
+</html>

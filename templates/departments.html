@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Departments</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #e6f0fa;
+        }
+
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
+            color: white;
+            padding: 30px 20px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar h2 {
+            font-size: 26px;
+            margin-bottom: 30px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar ul li {
+            margin: 10px 0;
+            padding: 12px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar ul li:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px);
+        }
+
+        .sidebar ul li.active {
+            background-color: #ffffff;
+            color: #4fb4e2;
+            font-weight: 600;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 40px;
+        }
+
+        .header {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .list-container {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .refresh-button, .create-button {
+            background-color: #4fb4e2;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            margin-left: 10px;
+        }
+
+        .refresh-button:hover, .create-button:hover {
+            background-color: #3a9ccc;
+            transform: translateY(-2px);
+        }
+
+        .department-item {
+            background-color: #f1f5f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .department-item p {
+            color: #2c3e50;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        .department-item button {
+            background-color: #4fb4e2;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .department-item button:hover {
+            background-color: #3a9ccc;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 80px;
+                padding: 20px 10px;
+            }
+
+            .sidebar h2 {
+                font-size: 20px;
+            }
+
+            .sidebar ul li {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .main-content {
+                margin-left: 80px;
+                padding: 20px;
+            }
+
+            .list-container {
+                padding: 20px;
+            }
+
+            .department-item {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            .department-item button {
+                padding: 8px 16px;
+                width: auto;
+                align-self: flex-start;
+            }
+
+            .list-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            .refresh-button, .create-button {
+                width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <h2>Admin Panel</h2>
+            <ul>
+                <li onclick="navigateTo('/dashboard')">Dashboard</li>
+                <li onclick="navigateTo('/edit-profile')">Edit Profile</li>
+                <li class="active" onclick="navigateTo('/departments')">Departments</li>
+                <li onclick="navigateTo('/doctors')">Doctors</li>
+                <li onclick="navigateTo('/change-password')">Change Password</li>
+                <li onclick="navigateTo('/logout')">Logout</li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h1>Departments</h1>
+            </div>
+            <div class="list-container">
+                <div class="list-header">
+                    <h2>Department List</h2>
+                    <div>
+                        <button class="refresh-button" onclick="loadDepartments()">Refresh</button>
+                        <button class="create-button" onclick="navigateTo('/create-department')">Create New</button>
+                    </div>
+                </div>
+                <div id="department-list">
+                    <!-- Departments will be dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function navigateTo(url) {
+            try {
+                window.location.href = url;
+            } catch (error) {
+                console.error("Navigation failed:", error);
+                alert("Failed to navigate to " + url + ". Please check if the page exists or if the server is running.");
+            }
+        }
+
+        async function loadDepartments() {
+            const list = document.getElementById("department-list");
+            list.innerHTML = "<p>Loading departments...</p>";
+            try {
+                const response = await fetch("/departments", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const departments = await response.json();
+                list.innerHTML = "";
+                if (departments.length === 0) {
+                    list.innerHTML = "<p>No departments found.</p>";
+                } else {
+                    departments.forEach(dept => {
+                        const item = document.createElement("div");
+                        item.className = "department-item";
+                        item.innerHTML = `
+                            <p>${dept.name} - ${dept.description}</p>
+                            <button onclick="viewDetails('${dept.name}')">View Details</button>
+                        `;
+                        list.appendChild(item);
+                    });
+                }
+            } catch (error) {
+                console.error("Error loading departments:", error);
+                list.innerHTML = "<p>Error loading departments. Please try again later.</p>";
+            }
+        }
+
+        function viewDetails(deptName) {
+            navigateTo(`/department-details?name=${encodeURIComponent(deptName)}`);
+        }
+
+        window.onload = loadDepartments;
+    </script>
+</body>
+</html>
