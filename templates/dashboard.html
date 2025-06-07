@@ -11,16 +11,13 @@
             box-sizing: border-box;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
-
         body {
             background-color: #e6f0fa;
         }
-
         .dashboard-container {
             display: flex;
             min-height: 100vh;
         }
-
         .sidebar {
             width: 280px;
             background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
@@ -31,18 +28,15 @@
             height: 100%;
             transition: width 0.3s ease;
         }
-
         .sidebar h2 {
             font-size: 26px;
             margin-bottom: 30px;
             text-align: center;
             letter-spacing: 1px;
         }
-
         .sidebar ul {
             list-style: none;
         }
-
         .sidebar ul li {
             margin: 10px 0;
             padding: 12px 15px;
@@ -54,24 +48,20 @@
             align-items: center;
             gap: 10px;
         }
-
         .sidebar ul li:hover {
             background-color: rgba(255, 255, 255, 0.2);
             transform: translateX(5px);
         }
-
         .sidebar ul li.active {
             background-color: #ffffff;
             color: #4fb4e2;
             font-weight: 600;
         }
-
         .main-content {
             flex: 1;
             margin-left: 280px;
             padding: 40px;
         }
-
         .header {
             background-color: white;
             padding: 25px;
@@ -82,18 +72,15 @@
             justify-content: space-between;
             align-items: center;
         }
-
         .header h1 {
             color: #2c3e50;
             font-size: 32px;
             font-weight: 600;
         }
-
         .header-buttons {
             display: flex;
             gap: 15px;
         }
-
         .summary-container {
             background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
             padding: 40px;
@@ -101,25 +88,31 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
             margin-bottom: 30px;
         }
-
         .summary-container h2 {
             color: #2c3e50;
             font-size: 24px;
             margin-bottom: 20px;
         }
-
         .summary-item {
             background-color: #f1f5f9;
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 15px;
         }
-
         .summary-item p {
             color: #2c3e50;
             font-size: 16px;
         }
-
+        .error-message {
+            color: #dc3545;
+            font-size: 16px;
+            text-align: center;
+            padding: 10px;
+            border: 1px solid #dc3545;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
         button {
             background-color: #4fb4e2;
             color: white;
@@ -130,41 +123,33 @@
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
-
         button:hover {
             background-color: #3a9ccc;
             transform: translateY(-2px);
         }
-
         @media (max-width: 768px) {
             .sidebar {
                 width: 80px;
                 padding: 20px 10px;
             }
-
             .sidebar h2 {
                 font-size: 20px;
             }
-
             .sidebar ul li {
                 font-size: 14px;
                 padding: 10px;
             }
-
             .main-content {
                 margin-left: 80px;
                 padding: 20px;
             }
-
             .summary-container {
                 padding: 20px;
             }
-
             .header-buttons {
                 flex-direction: column;
                 gap: 10px;
             }
-
             button {
                 width: 100%;
             }
@@ -181,7 +166,7 @@
                 <li onclick="navigateTo('/departments')">Departments</li>
                 <li onclick="navigateTo('/doctors')">Doctors</li>
                 <li onclick="navigateTo('/change-password')">Change Password</li>
-                <li onclick="navigateTo('/logout')">Logout</li>
+                <li onclick="navigateTo='/logout')">Logout</li>
             </ul>
         </div>
         <div class="main-content">
@@ -194,6 +179,7 @@
             </div>
             <div class="summary-container">
                 <h2>Summary</h2>
+                <p id="error-message" class="error-message"></p>
                 <div class="summary-item">
                     <p>Total Departments: <span id="total-departments">0</span></p>
                 </div>
@@ -214,22 +200,54 @@
         }
 
         async function loadSummary() {
+            const errorMessage = document.getElementById("error-message");
+            errorMessage.style.display = "none";
+
             try {
-                const deptResponse = await fetch("/departments");
-                if (!deptResponse.ok) throw new Error("Failed to fetch departments");
+                // Fetch departments
+                console.log("Fetching departments from /departments/list-json");
+                const deptResponse = await fetch("/departments/list-json", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin"
+                });
+                if (!deptResponse.ok) {
+                    const errDetail = await deptResponse.json().catch(() => ({}));
+                    throw new Error(`Failed to fetch departments: ${errDetail.detail || deptResponse.statusText}`);
+                }
                 const departments = await deptResponse.json();
+                console.log("Departments fetched:", departments);
+                if (!Array.isArray(departments)) {
+                    throw new Error("Invalid department data: Expected an array");
+                }
                 document.getElementById("total-departments").textContent = departments.length;
 
-                const docResponse = await fetch("/doctors");
-                if (!docResponse.ok) throw new Error("Failed to fetch doctors");
+                // Fetch doctors
+                console.log("Fetching doctors from /doctors/list-json");
+                const docResponse = await fetch("/doctors/list-json", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin"
+                });
+                if (!docResponse.ok) {
+                    const errDetail = await docResponse.json().catch(() => ({}));
+                    throw new Error(`Failed to fetch doctors: ${errDetail.detail || docResponse.statusText}`);
+                }
                 const doctors = await docResponse.json();
+                console.log("Doctors fetched:", doctors);
+                if (!Array.isArray(doctors)) {
+                    throw new Error("Invalid doctor data: Expected an array");
+                }
                 document.getElementById("total-doctors").textContent = doctors.length;
             } catch (error) {
                 console.error("Error loading summary:", error);
+                errorMessage.textContent = `Error loading summary: ${error.message}. Please try refreshing the page.`;
+                errorMessage.style.display = "block";
             }
         }
 
-        window.onload = loadSummary;
+        // Load summary when the DOM is fully loaded
+        document.addEventListener("DOMContentLoaded", loadSummary);
     </script>
 </body>
 </html>
