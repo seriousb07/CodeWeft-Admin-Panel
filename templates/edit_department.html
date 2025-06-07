@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edit Department</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    body {
+      background-color: #e6f0fa;
+    }
+    .dashboard-container {
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 280px;
+      background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
+      color: white;
+      padding: 30px 20px;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      position: fixed;
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+    .sidebar h2 {
+      font-size: 26px;
+      margin-bottom: 30px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .sidebar ul {
+      list-style: none;
+    }
+    .sidebar ul li {
+      margin: 10px 0;
+      padding: 12px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sidebar ul li:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+      transform: translateX(5px);
+    }
+    .sidebar ul li.active {
+      background-color: #ffffff;
+      color: #4fb4e2;
+      font-weight: 600;
+    }
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 40px;
+    }
+    .header {
+      background-color: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      color: #2c3e50;
+      font-size: 32px;
+      font-weight: 600;
+    }
+    .form-container {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      max-width: 600px;
+      margin: 0 auto;
+      transition: transform 0.3s ease;
+    }
+    .form-container:hover {
+      transform: translateY(-5px);
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group:last-child {
+      margin-bottom: 10px;
+    }
+    .form-group label {
+      display: block;
+      color: #2c3e50;
+      font-size: 16px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #4fb4e2;
+      box-shadow: 0 0 5px rgba(79, 180, 226, 0.3);
+    }
+    button {
+      background-color: #4fb4e2;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      width: 100%;
+    }
+    button:disabled {
+      background-color: #a0c8e8;
+      cursor: not-allowed;
+      transform: none;
+    }
+    button:hover:not(:disabled) {
+      background-color: #3a9ccc;
+      transform: translateY(-2px);
+    }
+    #message {
+      color: #28a745;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 16px;
+      display: none;
+    }
+    #error-message {
+      color: #dc3545;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 16px;
+      display: none;
+      padding: 10px;
+      border: 1px solid #dc3545;
+      border-radius: 8px;
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 80px;
+        padding: 20px 10px;
+      }
+      .sidebar h2 {
+        font-size: 20px;
+      }
+      .sidebar ul li {
+        font-size: 14px;
+        padding: 10px;
+      }
+      .main-content {
+        margin-left: 80px;
+        padding: 20px;
+      }
+      .form-container {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <div class="sidebar">
+      <h2>Admin Panel</h2>
+      <ul>
+        <li onclick="navigateTo('/dashboard')">Dashboard</li>
+        <li onclick="navigateTo('/edit-profile')">Edit Profile</li>
+        <li class="active" onclick="navigateTo('/departments')">Departments</li>
+        <li onclick="navigateTo('/doctors')">Doctors</li>
+        <li onclick="navigateTo('/change-password')">Change Password</li>
+        <li onclick="navigateTo('/logout')">Logout</li>
+      </ul>
+    </div>
+    <div class="main-content">
+      <div class="header">
+        <h1>Edit Department</h1>
+      </div>
+      <div class="form-container">
+        <form id="edit-department-form">
+          <input type="hidden" id="department_id" name="department_id" />
+          <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required placeholder="Enter department name" />
+          </div>
+          <div class="form-group">
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" required placeholder="Enter department description"></textarea>
+          </div>
+          <button type="submit" id="submit-btn" disabled>Update Department</button>
+        </form>
+        <p id="message"></p>
+        <p id="error-message"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Navigation helper
+    function navigateTo(url) {
+      try {
+        window.location.href = url;
+      } catch (error) {
+        console.error("Navigation failed:", error);
+        alert("Failed to navigate to " + url + ". Please check if the page exists or if the server is running.");
+      }
+    }
+
+    // Load department data
+    async function loadDepartmentData() {
+      const submitBtn = document.getElementById("submit-btn");
+      const errorMessage = document.getElementById("error-message");
+      const messageElement = document.getElementById("message");
+
+      // Clear any existing messages
+      errorMessage.style.display = "none";
+      messageElement.style.display = "none";
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const deptId = urlParams.get('id');
+      console.log('Extracted department ID from URL:', deptId);
+
+      if (!deptId || isNaN(deptId)) {
+        errorMessage.textContent = "Invalid or missing department ID.";
+        errorMessage.style.display = "block";
+        submitBtn.disabled = true;
+        return;
+      }
+
+      try {
+        console.log(`Fetching department data from /department/${deptId}`);
+        const response = await fetch(`/department/${deptId}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin"
+        });
+
+        if (!response.ok) {
+          const errDetail = await response.json().catch(() => ({}));
+          const errorMsg = errDetail.detail || response.statusText || "Unknown error";
+          throw new Error(`Failed to fetch department: ${errorMsg}`);
+        }
+
+        const department = await response.json();
+        console.log("Fetched department data:", department);
+
+        // Validate response structure
+        if (!department || typeof department !== 'object' || !department.id || !department.name || department.description === undefined) {
+          throw new Error("Invalid department data received from server.");
+        }
+
+        // Populate form fields
+        document.getElementById("department_id").value = department.id;
+        document.getElementById("name").value = department.name.trim();
+        document.getElementById("description").value = department.description.trim();
+
+        // Enable submit button after successful data load
+        submitBtn.disabled = false;
+        console.log("Form fields populated successfully.");
+      } catch (error) {
+        console.error("Error loading department data:", error);
+        errorMessage.textContent = `Error loading department data: ${error.message}. Please try again or contact support.`;
+        errorMessage.style.display = "block";
+        submitBtn.disabled = true;
+      }
+    }
+
+    // Form submission handler
+    document.getElementById("edit-department-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById("submit-btn");
+      const errorMessage = document.getElementById("error-message");
+      const messageElement = document.getElementById("message");
+
+      // Clear messages
+      errorMessage.style.display = "none";
+      messageElement.style.display = "none";
+
+      const deptId = document.getElementById("department_id").value;
+      const name = document.getElementById("name").value.trim();
+      const description = document.getElementById("description").value.trim();
+
+      // Client-side validation
+      if (!deptId) {
+        errorMessage.textContent = "Department ID is missing.";
+        errorMessage.style.display = "block";
+        return;
+      }
+      if (!name) {
+        errorMessage.textContent = "Department name is required.";
+        errorMessage.style.display = "block";
+        return;
+      }
+      if (!description) {
+        errorMessage.textContent = "Description is required.";
+        errorMessage.style.display = "block";
+        return;
+      }
+
+      submitBtn.disabled = true;
+
+      try {
+        const deptData = { name, description };
+        console.log("Submitting updated department data:", deptData);
+
+        const response = await fetch(`/department/${deptId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify(deptData),
+        });
+
+        const data = await response.json();
+        console.log("Update department response:", data);
+
+        if (response.ok) {
+          messageElement.textContent = data.message || "Department updated successfully.";
+          messageElement.style.display = "block";
+          errorMessage.style.display = "none";
+
+          // Redirect to departments page after 2 seconds
+          setTimeout(() => {
+            navigateTo("/departments");
+          }, 2000);
+        } else {
+          const errorDetail = typeof data.detail === 'string'
+            ? data.detail
+            : JSON.stringify(data.detail) || "Failed to update department.";
+          errorMessage.textContent = errorDetail;
+          errorMessage.style.display = "block";
+          messageElement.style.display = "none";
+        }
+      } catch (error) {
+        console.error("Error updating department:", error);
+        errorMessage.textContent = error.message || "An error occurred while updating the department. Please try again.";
+        errorMessage.style.display = "block";
+        messageElement.style.display = "none";
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Ensure DOM is loaded before running loadDepartmentData
+    document.addEventListener("DOMContentLoaded", loadDepartmentData);
+  </script>
+</body>
+</html>

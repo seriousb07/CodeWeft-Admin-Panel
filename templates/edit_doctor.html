@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Create Doctor</title>
+  <title>Edit Doctor</title>
+  <!-- Include Flatpickr CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
     * {
       margin: 0;
@@ -151,12 +153,12 @@
       font-size: 16px;
       display: none;
     }
-    .day-buttons, .time-slots, .department-checkboxes {
+    .day-buttons, .time-slots, .department-checkboxes, .holiday-list {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
     }
-    .day-button, .time-slot, .department-checkbox label {
+    .day-button, .time-slot, .department-checkbox label, .holiday-item {
       padding: 8px 12px;
       border: 1px solid #ddd;
       border-radius: 8px;
@@ -192,14 +194,17 @@
       align-items: center;
       margin-bottom: 10px;
     }
-    .remove-specialization {
+    .remove-specialization, .remove-holiday {
       background-color: #dc3545;
       padding: 8px 12px;
       width: auto;
       font-size: 14px;
     }
-    .remove-specialization:hover {
+    .remove-specialization:hover, .remove-holiday:hover {
       background-color: #c82333;
+    }
+    .flatpickr-input {
+      cursor: pointer;
     }
     @media (max-width: 768px) {
       .sidebar {
@@ -238,10 +243,11 @@
     </div>
     <div class="main-content">
       <div class="header">
-        <h1>Create Doctor</h1>
+        <h1>Edit Doctor</h1>
       </div>
       <div class="form-container">
-        <form id="create-doctor-form">
+        <form id="edit-doctor-form">
+          <input type="hidden" id="doctor_id" name="doctor_id" />
           <div class="form-group">
             <label for="doctor_name">Doctor Name</label>
             <input type="text" id="doctor_name" name="doctor_name" required />
@@ -314,7 +320,14 @@
               <div class="time-slot" data-slot="Evening (4 PM - 8 PM)">Evening (4 PM - 8 PM)</div>
             </div>
           </div>
-          <button type="submit">Create Doctor</button>
+          <div class="form-group">
+            <label for="holiday">Holidays</label>
+            <input type="text" id="holiday" placeholder="Select holiday dates" readonly />
+            <div class="holiday-list" id="holiday-list">
+              <!-- Selected holidays displayed here -->
+            </div>
+          </div>
+          <button type="submit">Update Doctor</button>
         </form>
         <p id="message"></p>
         <p id="error-message"></p>
@@ -322,7 +335,18 @@
     </div>
   </div>
 
+  <!-- Include Flatpickr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script>
+    // Initialize Flatpickr
+    const holidayPicker = flatpickr("#holiday", {
+      mode: "multiple",
+      dateFormat: "Y-m-d",
+      onChange: (selectedDates) => {
+        updateHolidayList(selectedDates);
+      }
+    });
+
     // Navigation helper
     function navigateTo(url) {
       try {
@@ -365,7 +389,6 @@
         }
 
         departments.forEach((dept, index) => {
-          console.log(`Processing department ${index + 1}:`, dept);
           if (dept.name) {
             const div = document.createElement("div");
             div.className = "department-checkbox";
@@ -392,15 +415,40 @@
     }
 
     // Add specialization input
-    function addSpecialization() {
+    function addSpecialization(value = '') {
       const specializationList = document.getElementById("specialization-list");
       const newItem = document.createElement("div");
       newItem.className = "specialization-item";
       newItem.innerHTML = `
-        <input type="text" class="specialization-input" name="specializations[]" required placeholder="Enter specialization" />
+        <input type="text" class="specialization-input" name="specializations[]" required placeholder="Enter specialization" value="${value}" />
         <button type="button" class="remove-specialization" onclick="this.parentElement.remove()">-</button>
       `;
       specializationList.appendChild(newItem);
+    }
+
+    // Update holiday list display
+    function updateHolidayList(dates) {
+      const holidayList = document.getElementById("holiday-list");
+      holidayList.innerHTML = '';
+      dates.forEach(date => {
+        const dateStr = date.toISOString().split('T')[0];
+        const item = document.createElement("div");
+        item.className = "holiday-item";
+        item.innerHTML = `
+          ${dateStr}
+          <button type="button" class="remove-holiday" onclick="removeHoliday('${dateStr}')">x</button>
+        `;
+        holidayList.appendChild(item);
+      });
+    }
+
+    // Remove a holiday
+    function removeHoliday(dateStr) {
+      const currentDates = holidayPicker.selectedDates.filter(date => 
+        date.toISOString().split('T')[0] !== dateStr
+      );
+      holidayPicker.setDate(currentDates);
+      updateHolidayList(currentDates);
     }
 
     // Toggle day selection
@@ -417,10 +465,80 @@
       });
     });
 
+    // Load doctor data
+    async function loadDoctorData() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const doctorId = urlParams.get('id');
+      if (!doctorId) {
+        document.getElementById("error-message").textContent = "No doctor ID provided.";
+        document.getElementById("error-message").style.display = "block";
+        return;
+      }
+
+      try {
+        console.log(`Fetching doctor data for ID: ${doctorId}`);
+        const response = await fetch(`/doctor/${doctorId}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin"
+        });
+        if (!response.ok) {
+          const errDetail = await response.json().catch(() => ({}));
+          throw new Error(`Failed to fetch doctor: ${errDetail.detail || response.statusText}`);
+        }
+        const doctor = await response.json();
+        console.log("Fetched doctor:", doctor);
+
+        // Populate form fields
+        document.getElementById("doctor_id").value = doctor.id;
+        document.getElementById("doctor_name").value = doctor.doctor_name || "";
+        document.getElementById("contact").value = doctor.contact || "";
+        document.getElementById("fees").value = doctor.fees !== undefined ? doctor.fees : "";
+        document.getElementById("experience").value = doctor.experience !== undefined ? doctor.experience : "";
+
+        // Populate specializations
+        const specializationList = document.getElementById("specialization-list");
+        specializationList.innerHTML = "";
+        (doctor.specializations || []).forEach(spec => addSpecialization(spec));
+        if (!doctor.specializations || doctor.specializations.length === 0) {
+          addSpecialization();
+        }
+
+        // Populate departments
+        await loadDepartments();
+        const departmentCheckboxes = document.querySelectorAll('input[name="departments"]');
+        departmentCheckboxes.forEach(checkbox => {
+          checkbox.checked = (doctor.departments || []).includes(checkbox.value);
+        });
+
+        // Populate days available
+        document.querySelectorAll(".day-button").forEach(button => {
+          button.classList.toggle("selected", (doctor.days_available || []).includes(button.dataset.day));
+        });
+
+        // Populate time slots
+        document.querySelectorAll(".time-slot").forEach(slot => {
+          slot.classList.toggle("selected", (doctor.time_slots || []).includes(slot.dataset.slot));
+        });
+
+        // Populate holidays
+        if (doctor.holiday && Array.isArray(doctor.holiday)) {
+          const holidayDates = doctor.holiday.map(date => new Date(date));
+          holidayPicker.setDate(holidayDates);
+          updateHolidayList(holidayDates);
+        }
+      } catch (error) {
+        console.error("Error loading doctor data:", error);
+        document.getElementById("error-message").textContent = `Error: ${error.message}`;
+        document.getElementById("error-message").style.display = "block";
+      }
+    }
+
     // Form submit handler
-    document.getElementById("create-doctor-form").addEventListener("submit", async (e) => {
+    document.getElementById("edit-doctor-form").addEventListener("submit", async (e) => {
       e.preventDefault();
 
+      const doctor_id = document.getElementById("doctor_id").value;
       const doctor_name = document.getElementById("doctor_name").value.trim();
       const specializationInputs = document.querySelectorAll(".specialization-input");
       const specializations = Array.from(specializationInputs)
@@ -435,6 +553,7 @@
         .map(button => button.dataset.day);
       const time_slots = Array.from(document.querySelectorAll(".time-slot.selected"))
         .map(slot => slot.dataset.slot);
+      const holidays = holidayPicker.selectedDates.map(date => date.toISOString().split('T')[0]);
 
       const message = document.getElementById("message");
       const errorMessage = document.getElementById("error-message");
@@ -445,6 +564,11 @@
       errorMessage.style.display = "none";
 
       // Validation
+      if (!doctor_id) {
+        errorMessage.textContent = "Doctor ID is missing.";
+        errorMessage.style.display = "block";
+        return;
+      }
       if (contact.length !== 10 || !/^\d{10}$/.test(contact)) {
         errorMessage.textContent = "Please enter a valid 10-digit contact number.";
         errorMessage.style.display = "block";
@@ -492,59 +616,46 @@
           experience,
           departments,
           days_available,
-          time_slots
+          time_slots,
+          holiday: holidays.length > 0 ? holidays : null
         };
-        console.log("Submitting new doctor:", doctorData);
+        console.log("Submitting updated doctor:", doctorData);
 
-        const response = await fetch("/create-doctor", {
-          method: "POST",
+        const response = await fetch(`/doctor/${doctor_id}`, {
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
           body: JSON.stringify(doctorData),
         });
 
         const data = await response.json();
-        console.log("Create doctor response:", data);
+        console.log("Update doctor response:", data);
 
         if (response.ok) {
-          // Ensure data.message is a string
           const successMessage = typeof data.message === 'string'
             ? data.message
             : (data.message && typeof data.message === 'object' && data.message.text)
               ? data.message.text
-              : JSON.stringify(data.message) || "Doctor created successfully.";
+              : JSON.stringify(data.message) || "Doctor updated successfully.";
           message.textContent = successMessage;
           message.style.display = "block";
           errorMessage.style.display = "none";
-
-          // Reset form
-          e.target.reset();
-          document.getElementById("specialization-list").innerHTML = `
-            <div class="specialization-item">
-              <input type="text" class="specialization-input" name="specializations[]" required placeholder="Enter specialization" />
-              <button type="button" class="add-specialization" onclick="addSpecialization()">+</button>
-            </div>
-          `;
-          document.querySelectorAll(".day-button, .time-slot").forEach(el => el.classList.remove("selected"));
-          document.querySelectorAll('input[name="departments"]').forEach(checkbox => checkbox.checked = false);
-          await loadDepartments();
 
           setTimeout(() => {
             navigateTo("/doctors");
           }, 2000);
         } else {
-          // Ensure data.detail is a string
           const errorDetail = typeof data.detail === 'string'
             ? data.detail
             : (data.detail && Array.isArray(data.detail))
               ? data.detail.map(item => item.error || JSON.stringify(item)).join(', ')
-              : JSON.stringify(data.detail) || "Failed to create doctor.";
+              : JSON.stringify(data.detail) || "Failed to update doctor.";
           errorMessage.textContent = errorDetail;
           errorMessage.style.display = "block";
           message.style.display = "none";
         }
       } catch (error) {
-        console.error("Error creating doctor:", error);
+        console.error("Error updating doctor:", error);
         errorMessage.textContent = error.message || "An error occurred. Please try again.";
         errorMessage.style.display = "block";
         message.style.display = "none";
@@ -553,8 +664,8 @@
       }
     });
 
-    // Load departments on page load
-    window.onload = loadDepartments;
+    // Load doctor data and departments on page load
+    window.onload = loadDoctorData;
   </script>
 </body>
 </html>

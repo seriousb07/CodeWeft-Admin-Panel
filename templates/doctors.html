@@ -11,16 +11,13 @@
             box-sizing: border-box;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
-
         body {
             background-color: #e6f0fa;
         }
-
         .dashboard-container {
             display: flex;
             min-height: 100vh;
         }
-
         .sidebar {
             width: 280px;
             background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
@@ -31,18 +28,15 @@
             height: 100%;
             transition: width 0.3s ease;
         }
-
         .sidebar h2 {
             font-size: 26px;
             margin-bottom: 30px;
             text-align: center;
             letter-spacing: 1px;
         }
-
         .sidebar ul {
             list-style: none;
         }
-
         .sidebar ul li {
             margin: 10px 0;
             padding: 12px 15px;
@@ -54,24 +48,20 @@
             align-items: center;
             gap: 10px;
         }
-
         .sidebar ul li:hover {
             background-color: rgba(255, 255, 255, 0.2);
             transform: translateX(5px);
         }
-
         .sidebar ul li.active {
             background-color: #ffffff;
             color: #4fb4e2;
             font-weight: 600;
         }
-
         .main-content {
             flex: 1;
             margin-left: 280px;
             padding: 40px;
         }
-
         .header {
             background-color: white;
             padding: 25px;
@@ -82,20 +72,17 @@
             justify-content: space-between;
             align-items: center;
         }
-
         .header h1 {
             color: #2c3e50;
             font-size: 32px;
             font-weight: 600;
         }
-
         .list-container {
             background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
             padding: 40px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         }
-
         .list-header {
             display: flex;
             justify-content: space-between;
@@ -104,7 +91,6 @@
             gap: 10px;
             flex-wrap: wrap;
         }
-
         .refresh-button, .create-button {
             background-color: #4fb4e2;
             color: white;
@@ -115,12 +101,10 @@
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
-
         .refresh-button:hover, .create-button:hover {
             background-color: #3a9ccc;
             transform: translateY(-2px);
         }
-
         .doctor-item {
             background-color: #f1f5f9;
             padding: 20px;
@@ -131,29 +115,24 @@
             align-items: flex-start;
             gap: 15px;
         }
-
         .doctor-details {
             flex: 1;
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-
         .doctor-details p {
             color: #2c3e50;
             font-size: 16px;
         }
-
         .doctor-details p span.label {
             font-weight: 500;
             color: #4fb4e2;
         }
-
         .doctor-actions {
             display: flex;
             gap: 10px;
         }
-
         .doctor-item button {
             padding: 8px 16px;
             border: none;
@@ -162,80 +141,65 @@
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
-
         .doctor-item button.edit {
             background-color: #4fb4e2;
             color: white;
         }
-
         .doctor-item button.delete {
             background-color: #dc3545;
             color: white;
         }
-
         .doctor-item button.edit:hover {
             background-color: #3a9ccc;
             transform: translateY(-2px);
         }
-
         .doctor-item button.delete:hover {
             background-color: #c82333;
             transform: translateY(-2px);
         }
-
         .error-message {
             color: #dc3545;
             font-size: 16px;
             text-align: center;
         }
-
         @media (max-width: 768px) {
             .sidebar {
                 width: 80px;
                 padding: 20px 10px;
             }
-
             .sidebar h2 {
                 font-size: 20px;
             }
-
             .sidebar ul li {
                 font-size: 14px;
                 padding: 10px;
             }
-
             .main-content {
                 margin-left: 80px;
                 padding: 20px;
             }
-
             .list-container {
                 padding: 20px;
             }
-
             .doctor-item {
                 flex-direction: column;
                 gap: 10px;
                 align-items: flex-start;
             }
-
             .doctor-actions {
                 flex-direction: column;
                 gap: 8px;
                 width: 100%;
             }
-
             .doctor-item button {
                 padding: 8px 16px;
                 width: 100%;
             }
-
             .list-header {
                 flex-direction: column;
                 gap: 10px;
                 align-items: flex-start;
             }
-
             .refresh-button, .create-button {
                 width: auto;
             }
@@ -268,7 +232,7 @@
                     </div>
                 </div>
                 <div id="doctor-list">
-                    <!-- Doctors will be dynamically populated here -->
+                    <p>Loading doctors...</p>
                 </div>
             </div>
         </div>
@@ -284,14 +248,27 @@
         }
 
         async function loadDoctors() {
+            const list = document.getElementById("doctor-list");
+            list.innerHTML = "<p>Loading doctors...</p>";
+
             try {
-                const response = await fetch("/doctors/list-json");
+                console.log("Fetching doctors from /doctors/list-json");
+                const response = await fetch("/doctors/list-json", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin"
+                });
                 if (!response.ok) {
-                    const errorDetail = await response.json();
-                    throw new Error(`HTTP error! status: ${response.status}, detail: ${JSON.stringify(errorDetail)}`);
+                    const errorDetail = await response.json().catch(() => ({}));
+                    throw new Error(`Failed to fetch doctors: ${errorDetail.detail || response.statusText}`);
                 }
                 const doctors = await response.json();
-                const list = document.getElementById("doctor-list");
+                console.log("Fetched doctors:", doctors);
+
+                if (!Array.isArray(doctors)) {
+                    throw new Error("Doctors response is not an array");
+                }
+
                 list.innerHTML = "";
                 if (doctors.length === 0) {
                     list.innerHTML = "<p>No doctors found.</p>";
@@ -301,15 +278,15 @@
                         item.className = "doctor-item";
                         item.innerHTML = `
                             <div class="doctor-details">
-                                <p><span class="label">Name:</span> Dr. ${doc.doctor_name}</p>
-                                <p><span class="label">Specializations:</span> ${doc.specializations.join(", ") || "None"}</p>
-                                <p><span class="label">Contact:</span> ${doc.contact}</p>
-                                <p><span class="label">Fees:</span> ₹${doc.fees}</p>
-                                <p><span class="label">Experience:</span> ${doc.experience} years</p>
-                                <p><span class="label">Departments:</span> ${doc.departments.join(", ") || "None"}</p>
-                                <p><span class="label">Days Available:</span> ${doc.days_available.join(", ") || "None"}</p>
-                                <p><span class="label">Time Slots:</span> ${doc.time_slots.join(", ") || "None"}</p>
-                                <p><span class="label">Holidays:</span> ${doc.holiday ? doc.holiday.join(", ") : "None"}</p>
+                                <p><span class="label">Name:</span> Dr. ${doc.doctor_name || "N/A"}</p>
+                                <p><span class="label">Specializations:</span> ${Array.isArray(doc.specializations) ? doc.specializations.join(", ") : "None"}</p>
+                                <p><span class="label">Contact:</span> ${doc.contact || "N/A"}</p>
+                                <p><span class="label">Fees:</span> ₹${doc.fees !== undefined ? doc.fees.toFixed(2) : "N/A"}</p>
+                                <p><span class="label">Experience:</span> ${doc.experience !== undefined ? doc.experience + " years" : "N/A"}</p>
+                                <p><span class="label">Departments:</span> ${Array.isArray(doc.departments) ? doc.departments.join(", ") : "None"}</p>
+                                <p><span class="label">Days Available:</span> ${Array.isArray(doc.days_available) ? doc.days_available.join(", ") : "None"}</p>
+                                <p><span class="label">Time Slots:</span> ${Array.isArray(doc.time_slots) ? doc.time_slots.join(", ") : "None"}</p>
+                                <p><span class="label">Holidays:</span> ${Array.isArray(doc.holiday) ? doc.holiday.join(", ") : "None"}</p>
                                 <p><span class="label">Email:</span> ${doc.email || "None"}</p>
                             </div>
                             <div class="doctor-actions">
@@ -322,7 +299,6 @@
                 }
             } catch (error) {
                 console.error("Error loading doctors:", error);
-                const list = document.getElementById("doctor-list");
                 list.innerHTML = `<p class="error-message">Error loading doctors: ${error.message}. Please try again later.</p>`;
             }
         }
@@ -333,6 +309,7 @@
             }
 
             try {
+                console.log(`Deleting doctor with ID: ${doctorId}`);
                 const response = await fetch(`/doctor/${doctorId}`, {
                     method: "DELETE",
                     headers: { "Content-Type": "application/json" },
@@ -340,13 +317,13 @@
                 });
 
                 if (!response.ok) {
-                    const errorDetail = await response.json();
-                    throw new Error(`HTTP error! status: ${response.status}, detail: ${JSON.stringify(errorDetail)}`);
+                    const errorDetail = await response.json().catch(() => ({}));
+                    throw new Error(`Failed to delete doctor: ${errorDetail.detail || response.statusText}`);
                 }
 
                 const data = await response.json();
                 alert(data.message || "Doctor deleted successfully.");
-                loadDoctors(); // Refresh the list
+                loadDoctors();
             } catch (error) {
                 console.error("Error deleting doctor:", error);
                 alert(`Error deleting doctor: ${error.message}`);

@@ -11,16 +11,13 @@
             box-sizing: border-box;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
-
         body {
             background-color: #e6f0fa;
         }
-
         .dashboard-container {
             display: flex;
             min-height: 100vh;
         }
-
         .sidebar {
             width: 280px;
             background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
@@ -31,18 +28,15 @@
             height: 100%;
             transition: width 0.3s ease;
         }
-
         .sidebar h2 {
             font-size: 26px;
             margin-bottom: 30px;
             text-align: center;
             letter-spacing: 1px;
         }
-
         .sidebar ul {
             list-style: none;
         }
-
         .sidebar ul li {
             margin: 10px 0;
             padding: 12px 15px;
@@ -54,24 +48,20 @@
             align-items: center;
             gap: 10px;
         }
-
         .sidebar ul li:hover {
             background-color: rgba(255, 255, 255, 0.2);
             transform: translateX(5px);
         }
-
         .sidebar ul li.active {
             background-color: #ffffff;
             color: #4fb4e2;
             font-weight: 600;
         }
-
         .main-content {
             flex: 1;
             margin-left: 280px;
             padding: 40px;
         }
-
         .header {
             background-color: white;
             padding: 25px;
@@ -82,27 +72,25 @@
             justify-content: space-between;
             align-items: center;
         }
-
         .header h1 {
             color: #2c3e50;
             font-size: 32px;
             font-weight: 600;
         }
-
         .list-container {
             background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
             padding: 40px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         }
-
         .list-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
-
         .refresh-button, .create-button {
             background-color: #4fb4e2;
             color: white;
@@ -112,14 +100,11 @@
             font-size: 14px;
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
-            margin-left: 10px;
         }
-
         .refresh-button:hover, .create-button:hover {
             background-color: #3a9ccc;
             transform: translateY(-2px);
         }
-
         .department-item {
             background-color: #f1f5f9;
             padding: 20px;
@@ -127,19 +112,28 @@
             margin-bottom: 15px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             gap: 15px;
         }
-
-        .department-item p {
+        .department-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .department-details p {
             color: #2c3e50;
             font-size: 16px;
-            flex: 1;
         }
-
+        .department-details p span.label {
+            font-weight: 500;
+            color: #4fb4e2;
+        }
+        .department-actions {
+            display: flex;
+            gap: 10px;
+        }
         .department-item button {
-            background-color: #4fb4e2;
-            color: white;
             padding: 8px 16px;
             border: none;
             border-radius: 8px;
@@ -147,56 +141,63 @@
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
-
-        .department-item button:hover {
+        .department-item button.edit {
+            background-color: #4fb4e2;
+            color: white;
+        }
+        .department-item button.delete {
+            background-color: #dc3545;
+            color: white;
+        }
+        .department-item button.edit:hover {
             background-color: #3a9ccc;
             transform: translateY(-2px);
         }
-
+        .department-item button.delete:hover {
+            background-color: #c82333;
+            transform: translateY(-2px);
+        }
+        .error-message {
+            color: #dc3545;
+            font-size: 16px;
+            text-align: center;
+        }
         @media (max-width: 768px) {
             .sidebar {
                 width: 80px;
                 padding: 20px 10px;
             }
-
             .sidebar h2 {
                 font-size: 20px;
             }
-
             .sidebar ul li {
                 font-size: 14px;
                 padding: 10px;
             }
-
             .main-content {
                 margin-left: 80px;
                 padding: 20px;
             }
-
             .list-container {
                 padding: 20px;
             }
-
             .department-item {
                 flex-direction: column;
                 gap: 10px;
                 align-items: flex-start;
             }
-
-            .department-item button {
-                padding: 8px 16px;
-                width: auto;
-                align-self: flex-start;
+            .department-actions {
+                flex-direction: column;
+                gap: 8px;
+                width: 100%;
             }
-
+            .department-item button {
+                width: 100%;
+            }
             .list-header {
                 flex-direction: column;
                 gap: 10px;
                 align-items: flex-start;
-            }
-
-            .refresh-button, .create-button {
-                width: auto;
             }
         }
     </style>
@@ -246,28 +247,36 @@
             const list = document.getElementById("department-list");
             list.innerHTML = "<p>Loading departments...</p>";
             try {
+                console.log("Fetching departments from /departments/list-json");
                 const response = await fetch("/departments/list-json", {
                     method: "GET",
                     headers: { "Content-Type": "application/json" },
                     credentials: "same-origin"
                 });
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
+                    const errorDetail = await response.json().catch(() => ({}));
+                    throw new Error(`Failed to fetch departments: ${errorDetail.detail || response.statusText}`);
                 }
                 const departments = await response.json();
-                console.log("Fetched departments:", departments); // Debug log
+                console.log("Fetched departments:", departments);
                 list.innerHTML = "";
                 if (!Array.isArray(departments) || departments.length === 0) {
                     list.innerHTML = "<p>No departments found.</p>";
                     return;
                 }
                 departments.forEach(dept => {
-                    if (dept.name && dept.description) {
+                    if (dept.id && dept.name && dept.description) {
                         const item = document.createElement("div");
                         item.className = "department-item";
                         item.innerHTML = `
-                            <p>${dept.name} - ${dept.description}</p>
-                            <button onclick="viewDetails('${encodeURIComponent(dept.name)}')">View Details</button>
+                            <div class="department-details">
+                                <p><span class="label">Name:</span> ${dept.name}</p>
+                                <p><span class="label">Description:</span> ${dept.description}</p>
+                            </div>
+                            <div class="department-actions">
+                                <button class="edit" onclick="editDepartment(${dept.id})">Edit</button>
+                                <button class="delete" onclick="deleteDepartment(${dept.id})">Delete</button>
+                            </div>
                         `;
                         list.appendChild(item);
                     } else {
@@ -276,12 +285,36 @@
                 });
             } catch (error) {
                 console.error("Error loading departments:", error);
-                list.innerHTML = "<p>Error loading departments. Please try again later.</p>";
+                list.innerHTML = `<p class="error-message">Error loading departments: ${error.message}. Please try again later.</p>`;
             }
         }
 
-        function viewDetails(deptName) {
-            navigateTo(`/department-details?name=${deptName}`);
+        function editDepartment(deptId) {
+            navigateTo(`/edit-department?id=${deptId}`);
+        }
+
+        async function deleteDepartment(deptId) {
+            if (!confirm("Are you sure you want to delete this department?")) {
+                return;
+            }
+            try {
+                console.log(`Deleting department with ID: ${deptId}`);
+                const response = await fetch(`/department/${deptId}`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin"
+                });
+                if (!response.ok) {
+                    const errorDetail = await response.json().catch(() => ({}));
+                    throw new Error(`Failed to delete department: ${errorDetail.detail || response.statusText}`);
+                }
+                const data = await response.json();
+                alert(data.message || "Department deleted successfully.");
+                loadDepartments();
+            } catch (error) {
+                console.error("Error deleting department:", error);
+                alert(`Error deleting department: ${error.message}`);
+            }
         }
 
         window.onload = loadDepartments;

@@ -15,25 +15,29 @@ class DepartmentCreate(BaseModel):
     name: str
     description: str
 
+class DepartmentUpdate(BaseModel):
+    name: str
+    description: str
+
 class DoctorCreate(BaseModel):
     doctor_name: str
-    specializations: List[str]  # Updated to plural, list to match frontend
+    specializations: List[str]
     contact: str
     fees: float
     experience: int
-    departments: List[str]  # Updated to plural, list to match frontend
+    departments: List[str]
     days_available: List[str]
     time_slots: List[str]
-    holiday: Optional[List[str]] = None  # Optional field
-    email: Optional[str] = None  # Optional field
+    holiday: Optional[List[str]] = None
+    email: Optional[str] = None
 
 class DoctorUpdate(BaseModel):
     doctor_name: str
-    specializations: List[str]  # Updated to plural
+    specializations: List[str]
     contact: str
     fees: float
     experience: int
-    departments: List[str]  # Updated to plural
+    departments: List[str]
     days_available: List[str]
     time_slots: List[str]
     holiday: Optional[List[str]] = None
@@ -102,6 +106,37 @@ async def departments_page(request: Request):
 @app.get("/doctors", response_class=HTMLResponse)
 async def doctors_page(request: Request):
     return templates.TemplateResponse("doctors.html", {"request": request})
+
+# Edit Doctor page
+@app.get("/edit-doctor", response_class=HTMLResponse)
+async def edit_doctor_page(request: Request, id: int):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute(
+        """
+        SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
+        FROM doctors WHERE id = %s
+        """,
+        (id,)
+    )
+    doctor = cursor.fetchone()
+    cursor.close()
+    connection.close()
+
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    # Convert JSON strings to lists for template rendering
+    doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
+    doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
+    doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
+    doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
+    doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+
+    return templates.TemplateResponse("edit_doctor.html", {"request": request, "doctor": doctor})
 
 # Edit Profile page
 @app.get("/edit-profile", response_class=HTMLResponse)
@@ -180,6 +215,89 @@ async def create_department(department: DepartmentCreate):
 
     return {"message": "Department created successfully!"}
 
+# Edit Department page
+@app.get("/edit-department", response_class=HTMLResponse)
+async def edit_department_page(request: Request, id: int):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("SELECT id, name, description FROM departments WHERE id = %s", (id,))
+    department = cursor.fetchone()
+    cursor.close()
+    connection.close()
+
+    if not department:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    return templates.TemplateResponse("edit_department.html", {"request": request, "department": department})
+
+# Get Department endpoint
+@app.get("/department/{id}")
+async def get_department(id: int):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("SELECT id, name, description FROM departments WHERE id = %s", (id,))
+    department = cursor.fetchone()
+    cursor.close()
+    connection.close()
+
+    if not department:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    return department
+
+# Update Department endpoint
+@app.put("/department/{department_id}")
+async def update_department(department_id: int, department: DepartmentUpdate):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            "UPDATE departments SET name = %s, description = %s WHERE id = %s",
+            (department.name, department.description, department_id)
+        )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Department not found")
+        connection.commit()
+    except mysql.connector.Error as err:
+        connection.rollback()
+        raise HTTPException(status_code=400, detail=f"Database error: {err}")
+    finally:
+        cursor.close()
+        connection.close()
+
+    return {"message": "Department updated successfully"}
+
+# Delete Department endpoint
+@app.delete("/department/{department_id}")
+async def delete_department(department_id: int):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor()
+    try:
+        cursor.execute("DELETE FROM departments WHERE id = %s", (department_id,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Department not found")
+        connection.commit()
+    except mysql.connector.Error as err:
+        connection.rollback()
+        raise HTTPException(status_code=400, detail=f"Database error: {err}")
+    finally:
+        cursor.close()
+        connection.close()
+
+    return {"message": "Department deleted successfully"}
+
 # Create Doctor page
 @app.get("/create-doctor", response_class=HTMLResponse)
 async def create_doctor_page(request: Request):
@@ -245,7 +363,7 @@ async def get_doctor(doctor_id: int):
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
-    # Convert JSON strings back to lists for the response
+    # Convert JSON strings to lists for the response
     doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
     doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
     doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
@@ -297,6 +415,29 @@ async def update_doctor(doctor_id: int, doctor: DoctorUpdate):
 
     return {"message": "Doctor updated successfully"}
 
+# Delete Doctor endpoint
+@app.delete("/doctor/{doctor_id}")
+async def delete_doctor(doctor_id: int):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor()
+    try:
+        cursor.execute("DELETE FROM doctors WHERE id = %s", (doctor_id,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+        connection.commit()
+    except mysql.connector.Error as err:
+        connection.rollback()
+        error_message = str(err) if err else "Unknown database error"
+        raise HTTPException(status_code=400, detail=f"Database error: {error_message}")
+    finally:
+        cursor.close()
+        connection.close()
+
+    return {"message": "Doctor deleted successfully"}
+
 # Change password endpoint
 @app.post("/change-password")
 async def change_password(user: UserChangePassword):
@@ -331,7 +472,7 @@ async def list_departments_json():
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
     cursor = connection.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM departments")
+    cursor.execute("SELECT id, name, description FROM departments")
     departments = cursor.fetchall()
     cursor.close()
     connection.close()
@@ -345,14 +486,42 @@ async def list_departments(request: Request):
         raise HTTPException(status_code=500, detail="Database connection failed")
 
     cursor = connection.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM departments")
+    cursor.execute("SELECT id, name, description FROM departments")
     departments = cursor.fetchall()
     cursor.close()
     connection.close()
 
     return templates.TemplateResponse("departments_list.html", {"request": request, "departments": departments})
 
-# List Doctors endpoint
+# List Doctors JSON endpoint for frontend fetch
+@app.get("/doctors/list-json")
+async def list_doctors_json():
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute(
+        """
+        SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
+        FROM doctors
+        """
+    )
+    doctors = cursor.fetchall()
+    cursor.close()
+    connection.close()
+
+    # Convert JSON strings to lists for the response
+    for doctor in doctors:
+        doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
+        doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
+        doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
+        doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
+        doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+
+    return doctors
+
+# List Doctors endpoint (for HTML rendering)
 @app.get("/doctors/list", response_class=HTMLResponse)
 async def list_doctors(request: Request):
     connection = get_db_connection()
