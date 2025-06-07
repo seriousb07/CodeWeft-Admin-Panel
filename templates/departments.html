@@ -34,6 +34,42 @@
             text-align: center;
             letter-spacing: 1px;
         }
+        .profile-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .profile-picture {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ffffff;
+            margin-bottom: 10px;
+            display: none; /* Hidden until image is loaded */
+        }
+        .profile-picture-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4fb4e2;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border: 2px solid #ffffff;
+        }
+        .profile-hospital-name {
+            font-size: 18px;
+            font-weight: 500;
+            text-align: center;
+            word-break: break-word;
+            max-width: 240px; /* Prevent overflow in sidebar */
+        }
         .sidebar ul {
             list-style: none;
         }
@@ -161,6 +197,8 @@
             color: #dc3545;
             font-size: 16px;
             text-align: center;
+            margin-top: 20px;
+            display: none;
         }
         @media (max-width: 768px) {
             .sidebar {
@@ -169,6 +207,18 @@
             }
             .sidebar h2 {
                 font-size: 20px;
+            }
+            .profile-section {
+                margin-bottom: 20px;
+            }
+            .profile-picture, .profile-picture-placeholder {
+                width: 50px;
+                height: 50px;
+                font-size: 18px;
+            }
+            .profile-hospital-name {
+                font-size: 14px;
+                display: none; /* Hide hospital name in collapsed sidebar */
             }
             .sidebar ul li {
                 font-size: 14px;
@@ -205,6 +255,11 @@
 <body>
     <div class="dashboard-container">
         <div class="sidebar">
+            <div class="profile-section">
+                <img id="profile-picture" class="profile-picture" alt="Profile Picture">
+                <div id="profile-picture-placeholder" class="profile-picture-placeholder"></div>
+                <span id="profile-hospital-name" class="profile-hospital-name">Default Hospital</span>
+            </div>
             <h2>Admin Panel</h2>
             <ul>
                 <li onclick="navigateTo('/dashboard')">Dashboard</li>
@@ -230,6 +285,7 @@
                 <div id="department-list">
                     <!-- Departments will be dynamically populated -->
                 </div>
+                <p id="error-message" class="error-message"></p>
             </div>
         </div>
     </div>
@@ -243,9 +299,53 @@
             }
         }
 
+        async function loadProfile() {
+            const profilePicture = document.getElementById("profile-picture");
+            const profilePicturePlaceholder = document.getElementById("profile-picture-placeholder");
+            const profileHospitalName = document.getElementById("profile-hospital-name");
+            const errorMessage = document.getElementById("error-message");
+
+            try {
+                console.log("Fetching profile from /profile");
+                const response = await fetch("/profile", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin"
+                });
+                if (!response.ok) {
+                    const errDetail = await response.json().catch(() => ({}));
+                    throw new Error(`Failed to fetch profile: ${errDetail.detail || response.statusText}`);
+                }
+                const profile = await response.json();
+                console.log("Profile fetched:", profile);
+
+                if (profile.profile_picture) {
+                    profilePicture.src = profile.profile_picture;
+                    profilePicture.style.display = "block";
+                    profilePicturePlaceholder.style.display = "none";
+                } else {
+                    profilePicture.style.display = "none";
+                    profilePicturePlaceholder.style.display = "flex";
+                    profilePicturePlaceholder.textContent = profile.hospital_name ? profile.hospital_name.charAt(0).toUpperCase() : "H";
+                }
+                profileHospitalName.textContent = profile.hospital_name || "Default Hospital";
+            } catch (error) {
+                console.error("Error loading profile:", error);
+                errorMessage.textContent = `Error loading profile: ${error.message}`;
+                errorMessage.style.display = "block";
+                profilePicture.style.display = "none";
+                profilePicturePlaceholder.style.display = "flex";
+                profilePicturePlaceholder.textContent = "H";
+                profileHospitalName.textContent = "Default Hospital";
+            }
+        }
+
         async function loadDepartments() {
             const list = document.getElementById("department-list");
+            const errorMessage = document.getElementById("error-message");
             list.innerHTML = "<p>Loading departments...</p>";
+            errorMessage.style.display = "none";
+
             try {
                 console.log("Fetching departments from /departments/list-json");
                 const response = await fetch("/departments/list-json", {
@@ -285,7 +385,9 @@
                 });
             } catch (error) {
                 console.error("Error loading departments:", error);
-                list.innerHTML = `<p class="error-message">Error loading departments: ${error.message}. Please try again later.</p>`;
+                list.innerHTML = "";
+                errorMessage.textContent = `Error loading departments: ${error.message}. Please try again later.`;
+                errorMessage.style.display = "block";
             }
         }
 
@@ -297,6 +399,7 @@
             if (!confirm("Are you sure you want to delete this department?")) {
                 return;
             }
+            const errorMessage = document.getElementById("error-message");
             try {
                 console.log(`Deleting department with ID: ${deptId}`);
                 const response = await fetch(`/department/${deptId}`, {
@@ -313,11 +416,15 @@
                 loadDepartments();
             } catch (error) {
                 console.error("Error deleting department:", error);
-                alert(`Error deleting department: ${error.message}`);
+                errorMessage.textContent = `Error deleting department: ${error.message}`;
+                errorMessage.style.display = "block";
             }
         }
 
-        window.onload = loadDepartments;
+        document.addEventListener("DOMContentLoaded", () => {
+            loadProfile();
+            loadDepartments();
+        });
     </script>
 </body>
 </html>

@@ -153,12 +153,12 @@
       font-size: 16px;
       display: none;
     }
-    .day-buttons, .time-slots, .department-checkboxes, .holiday-list {
+    .day-buttons, .department-checkboxes, .holiday-list {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
     }
-    .day-button, .time-slot, .department-checkbox label, .holiday-item {
+    .day-button, .department-checkbox label, .holiday-item {
       padding: 8px 12px;
       border: 1px solid #ddd;
       border-radius: 8px;
@@ -166,7 +166,7 @@
       background-color: #f1f5f9;
       transition: background-color 0.3s ease;
     }
-    .day-button.selected, .time-slot.selected, .department-checkbox input:checked + label {
+    .day-button.selected, .department-checkbox input:checked + label {
       background-color: #4fb4e2;
       color: white;
       border-color: #4fb4e2;
@@ -174,34 +174,43 @@
     .department-checkbox input {
       display: none;
     }
-    .specialization-container {
+    .specialization-container, .time-slot-container {
       display: flex;
       gap: 10px;
       align-items: center;
     }
-    .add-specialization {
+    .add-specialization, .add-time-slot {
       background-color: #28a745;
       padding: 8px 12px;
       width: auto;
       font-size: 14px;
     }
-    .add-specialization:hover {
+    .add-specialization:hover, .add-time-slot:hover {
       background-color: #218838;
     }
-    .specialization-item {
+    .specialization-item, .time-slot-item {
       display: flex;
       gap: 10px;
       align-items: center;
       margin-bottom: 10px;
     }
-    .remove-specialization, .remove-holiday {
+    .remove-specialization, .remove-time-slot, .remove-holiday {
       background-color: #dc3545;
       padding: 8px 12px;
       width: auto;
       font-size: 14px;
     }
-    .remove-specialization:hover, .remove-holiday:hover {
+    .remove-specialization:hover, .remove-time-slot:hover, .remove-holiday:hover {
       background-color: #c82333;
+    }
+    .time-slot-input-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex: 1;
+    }
+    .time-slot-input-group input[type="time"] {
+      flex: 1;
     }
     .flatpickr-input {
       cursor: pointer;
@@ -312,16 +321,15 @@
               <div class="day-button" data-day="Sunday">Sunday</div>
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group" id="time-slots-group">
             <label>Time Slots</label>
-            <div class="time-slots">
-              <div class="time-slot" data-slot="Morning (9 AM - 12 PM)">Morning (9 AM - 12 PM)</div>
-              <div class="time-slot" data-slot="Afternoon (12 PM - 4 PM)">Afternoon (12 PM - 4 PM)</div>
-              <div class="time-slot" data-slot="Evening (4 PM - 8 PM)">Evening (4 PM - 8 PM)</div>
+            <div id="time-slot-list">
+              <!-- Populated dynamically -->
             </div>
+            <button type="button" class="add-time-slot" onclick="addTimeSlot()">+ Add Time Slot</button>
           </div>
           <div class="form-group">
-            <label for="holiday">Holidays</label>
+            <label for="holiday">Not Available on</label>
             <input type="text" id="holiday" placeholder="Select holiday dates" readonly />
             <div class="holiday-list" id="holiday-list">
               <!-- Selected holidays displayed here -->
@@ -426,6 +434,22 @@
       specializationList.appendChild(newItem);
     }
 
+    // Add time slot input
+    function addTimeSlot(start = '', end = '') {
+      const timeSlotList = document.getElementById("time-slot-list");
+      const newItem = document.createElement("div");
+      newItem.className = "time-slot-item";
+      newItem.innerHTML = `
+        <div class="time-slot-input-group">
+          <input type="time" class="time-slot-start" name="time_slots_start[]" required placeholder="Start time" value="${start}" />
+          <span>to</span>
+          <input type="time" class="time-slot-end" name="time_slots_end[]" required placeholder="End time" value="${end}" />
+        </div>
+        <button type="button" class="remove-time-slot" onclick="this.parentElement.remove()">-</button>
+      `;
+      timeSlotList.appendChild(newItem);
+    }
+
     // Update holiday list display
     function updateHolidayList(dates) {
       const holidayList = document.getElementById("holiday-list");
@@ -455,13 +479,6 @@
     document.querySelectorAll(".day-button").forEach(button => {
       button.addEventListener("click", () => {
         button.classList.toggle("selected");
-      });
-    });
-
-    // Toggle time slot selection
-    document.querySelectorAll(".time-slot").forEach(slot => {
-      slot.addEventListener("click", () => {
-        slot.classList.toggle("selected");
       });
     });
 
@@ -517,9 +534,15 @@
         });
 
         // Populate time slots
-        document.querySelectorAll(".time-slot").forEach(slot => {
-          slot.classList.toggle("selected", (doctor.time_slots || []).includes(slot.dataset.slot));
+        const timeSlotList = document.getElementById("time-slot-list");
+        timeSlotList.innerHTML = "";
+        (doctor.time_slots || []).forEach(slot => {
+          const [start, end] = slot.split(" - ");
+          addTimeSlot(start || "", end || "");
         });
+        if (!doctor.time_slots || doctor.time_slots.length === 0) {
+          addTimeSlot();
+        }
 
         // Populate holidays
         if (doctor.holiday && Array.isArray(doctor.holiday)) {
@@ -551,8 +574,15 @@
       const departments = Array.from(departmentCheckboxes).map(checkbox => checkbox.value);
       const days_available = Array.from(document.querySelectorAll(".day-button.selected"))
         .map(button => button.dataset.day);
-      const time_slots = Array.from(document.querySelectorAll(".time-slot.selected"))
-        .map(slot => slot.dataset.slot);
+      const timeSlotStarts = document.querySelectorAll(".time-slot-start");
+      const timeSlotEnds = document.querySelectorAll(".time-slot-end");
+      const time_slots = Array.from(timeSlotStarts).map((start, index) => {
+        const end = timeSlotEnds[index];
+        if (start.value && end.value) {
+          return `${start.value} - ${end.value}`;
+        }
+        return null;
+      }).filter(slot => slot);
       const holidays = holidayPicker.selectedDates.map(date => date.toISOString().split('T')[0]);
 
       const message = document.getElementById("message");
@@ -600,9 +630,19 @@
         return;
       }
       if (time_slots.length === 0) {
-        errorMessage.textContent = "Please select at least one time slot.";
+        errorMessage.textContent = "Please enter at least one valid time slot.";
         errorMessage.style.display = "block";
         return;
+      }
+      // Validate time slots
+      for (let i = 0; i < timeSlotStarts.length; i++) {
+        const start = timeSlotStarts[i].value;
+        const end = timeSlotEnds[i].value;
+        if (start && end && start >= end) {
+          errorMessage.textContent = "End time must be after start time for all time slots.";
+          errorMessage.style.display = "block";
+          return;
+        }
       }
 
       submitBtn.disabled = true;
@@ -656,7 +696,7 @@
         }
       } catch (error) {
         console.error("Error updating doctor:", error);
-        errorMessage.textContent = error.message || "An error occurred. Please try again.";
+        errorMessage.textContent = `Error: ${error.message}`;
         errorMessage.style.display = "block";
         message.style.display = "none";
       } finally {

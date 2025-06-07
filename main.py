@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request, Response
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 import mysql.connector
 import json
+import os
+from datetime import datetime
 from database import get_db_connection
 from models import UserLogin, UserChangePassword
 from auth import hash_password, verify_password
@@ -43,9 +45,18 @@ class DoctorUpdate(BaseModel):
     holiday: Optional[List[str]] = None
     email: Optional[str] = None
 
+class EditProfileModel(BaseModel):
+    username: str
+    hospital_name: str
+
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# Ensure upload directory exists
+UPLOAD_DIR = "static/uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
 # Initialize default user on startup
 @app.on_event("startup")
@@ -57,8 +68,8 @@ def init_default_user():
         if cursor.fetchone()[0] == 0:
             hashed_password = hash_password("admin123")
             cursor.execute(
-                "INSERT INTO users (username, hashed_password, email) VALUES (%s, %s, %s)",
-                ("admin", hashed_password, "admin@example.com")
+                "INSERT INTO users (username, hospital_name, hashed_password) VALUES (%s, %s, %s)",
+                ("admin", "Default Hospital", hashed_password)
             )
             connection.commit()
         cursor.close()
@@ -129,7 +140,6 @@ async def edit_doctor_page(request: Request, id: int):
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
-    # Convert JSON strings to lists for template rendering
     doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
     doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
     doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
@@ -138,41 +148,84 @@ async def edit_doctor_page(request: Request, id: int):
 
     return templates.TemplateResponse("edit_doctor.html", {"request": request, "doctor": doctor})
 
+# Profile endpoint (for fetching profile data)
+@app.get("/profile")
+async def get_profile():
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT username, hospital_name, profile_picture FROM users WHERE username = %s", ("admin",))
+        profile = cursor.fetchone()
+        if not profile:
+            raise HTTPException(status_code=404, detail="User not found")
+        return profile
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {err}")
+    finally:
+        cursor.close()
+        connection.close()
+
 # Edit Profile page
 @app.get("/edit-profile", response_class=HTMLResponse)
 async def edit_profile_page(request: Request):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
-
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute("SELECT name, email, contact FROM users WHERE username = %s", ("admin",))
-    profile = cursor.fetchone()
-    cursor.close()
-    connection.close()
-
-    return templates.TemplateResponse("edit_profile.html", {"request": request, "profile": profile})
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT username, hospital_name, profile_picture FROM users WHERE username = %s", ("admin",))
+        profile = cursor.fetchone()
+        return templates.TemplateResponse("edit_profile.html", {"request": request, "profile": profile})
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {err}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+    finally:
+        cursor.close()
+        connection.close()
 
 # Edit Profile endpoint
-class EditProfileModel(BaseModel):
-    name: str
-    email: str
-    contact: str
-
 @app.post("/edit-profile")
-async def edit_profile(profile: EditProfileModel):
+async def edit_profile(
+    username: str = Form(...),
+    hospital_name: str = Form(...),
+    profile_picture: Optional[UploadFile] = File(None)
+):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
+    profile_picture_path = None
+    if profile_picture:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{timestamp}_{profile_picture.filename}"
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        with open(file_path, "wb") as f:
+            content = await profile_picture.read()
+            f.write(content)
+        profile_picture_path = f"/static/uploads/{filename}"
+
     cursor = connection.cursor()
-    cursor.execute(
-        "UPDATE users SET name = %s, email = %s, contact = %s WHERE username = %s",
-        (profile.name, profile.email, profile.contact, "admin")
-    )
-    connection.commit()
-    cursor.close()
-    connection.close()
+    try:
+        cursor.execute(
+            """
+            UPDATE users
+            SET username = %s, hospital_name = %s, profile_picture = %s
+            WHERE username = %s
+            """,
+            (username, hospital_name, profile_picture_path, "admin")
+        )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+        connection.commit()
+    except mysql.connector.Error as err:
+        connection.rollback()
+        raise HTTPException(status_code=400, detail=f"Database error: {err}")
+    finally:
+        cursor.close()
+        connection.close()
 
     return {"message": "Profile updated successfully"}
 
@@ -363,7 +416,6 @@ async def get_doctor(doctor_id: int):
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
-    # Convert JSON strings to lists for the response
     doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
     doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
     doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
@@ -397,7 +449,7 @@ async def update_doctor(doctor_id: int, doctor: DoctorUpdate):
                 json.dumps(doctor.departments),
                 json.dumps(doctor.days_available),
                 json.dumps(doctor.time_slots),
-                json.dumps(doctor.holiday) if doctor.holiday else None,
+                json.dumps(doctor.holiday) if doctor.hospital else None,
                 doctor.email,
                 doctor_id
             )
@@ -511,7 +563,6 @@ async def list_doctors_json():
     cursor.close()
     connection.close()
 
-    # Convert JSON strings to lists for the response
     for doctor in doctors:
         doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
         doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
@@ -523,7 +574,7 @@ async def list_doctors_json():
 
 # List Doctors endpoint (for HTML rendering)
 @app.get("/doctors/list", response_class=HTMLResponse)
-async def list_doctors(request: Request):
+async def doctors_list(request: Request):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -539,7 +590,6 @@ async def list_doctors(request: Request):
     cursor.close()
     connection.close()
 
-    # Convert JSON strings to lists for template rendering
     for doctor in doctors:
         doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
         doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []

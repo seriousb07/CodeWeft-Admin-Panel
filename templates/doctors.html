@@ -11,13 +11,56 @@
             box-sizing: border-box;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
+
         body {
             background-color: #e6f0fa;
         }
+
+        .profile-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .profile-picture {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ffffff;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .profile-picture-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4fb4e2;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border: 2px solid #ffffff;
+        }
+
+        .profile-hospital-name {
+            font-size: 18px;
+            font-weight: 500;
+            text-align: center;
+            word-break: break-word;
+            max-width: 240px;
+        }
+
         .dashboard-container {
             display: flex;
             min-height: 100vh;
         }
+
         .sidebar {
             width: 280px;
             background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
@@ -28,15 +71,18 @@
             height: 100%;
             transition: width 0.3s ease;
         }
+
         .sidebar h2 {
             font-size: 26px;
             margin-bottom: 30px;
             text-align: center;
             letter-spacing: 1px;
         }
+
         .sidebar ul {
             list-style: none;
         }
+
         .sidebar ul li {
             margin: 10px 0;
             padding: 12px 15px;
@@ -48,20 +94,24 @@
             align-items: center;
             gap: 10px;
         }
+
         .sidebar ul li:hover {
             background-color: rgba(255, 255, 255, 0.2);
             transform: translateX(5px);
         }
+
         .sidebar ul li.active {
             background-color: #ffffff;
             color: #4fb4e2;
             font-weight: 600;
         }
+
         .main-content {
             flex: 1;
             margin-left: 280px;
             padding: 40px;
         }
+
         .header {
             background-color: white;
             padding: 25px;
@@ -72,17 +122,20 @@
             justify-content: space-between;
             align-items: center;
         }
+
         .header h1 {
             color: #2c3e50;
             font-size: 32px;
             font-weight: 600;
         }
+
         .list-container {
             background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
             padding: 40px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         }
+
         .list-header {
             display: flex;
             justify-content: space-between;
@@ -91,6 +144,7 @@
             gap: 10px;
             flex-wrap: wrap;
         }
+
         .refresh-button, .create-button {
             background-color: #4fb4e2;
             color: white;
@@ -101,10 +155,12 @@
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
+
         .refresh-button:hover, .create-button:hover {
             background-color: #3a9ccc;
             transform: translateY(-2px);
         }
+
         .doctor-item {
             background-color: #f1f5f9;
             padding: 20px;
@@ -115,24 +171,29 @@
             align-items: flex-start;
             gap: 15px;
         }
+
         .doctor-details {
             flex: 1;
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
+
         .doctor-details p {
             color: #2c3e50;
             font-size: 16px;
         }
+
         .doctor-details p span.label {
             font-weight: 500;
             color: #4fb4e2;
         }
+
         .doctor-actions {
             display: flex;
             gap: 10px;
         }
+
         .doctor-item button {
             padding: 8px 16px;
             border: none;
@@ -141,67 +202,78 @@
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
+
         .doctor-item button.edit {
             background-color: #4fb4e2;
             color: white;
         }
+
         .doctor-item button.delete {
             background-color: #dc3545;
             color: white;
         }
+
         .doctor-item button.edit:hover {
             background-color: #3a9ccc;
             transform: translateY(-2px);
         }
+
         .doctor-item button.delete:hover {
             background-color: #c82333;
             transform: translateY(-2px);
         }
+
         .error-message {
             color: #dc3545;
             font-size: 16px;
             text-align: center;
         }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 80px;
                 padding: 20px 10px;
             }
+
             .sidebar h2 {
                 font-size: 20px;
             }
+
             .sidebar ul li {
                 font-size: 14px;
                 padding: 10px;
             }
+
             .main-content {
                 margin-left: 80px;
                 padding: 20px;
             }
+
             .list-container {
                 padding: 20px;
             }
+
             .doctor-item {
                 flex-direction: column;
                 gap: 10px;
                 align-items: flex-start;
             }
+
             .doctor-actions {
                 flex-direction: column;
                 gap: 8px;
                 width: 100%;
             }
+
             .doctor-item button {
                 padding: 8px 16px;
                 width: 100%;
             }
+
             .list-header {
                 flex-direction: column;
                 gap: 10px;
                 align-items: flex-start;
-            }
-            .refresh-button, .create-button {
-                width: auto;
             }
         }
     </style>
@@ -209,6 +281,11 @@
 <body>
     <div class="dashboard-container">
         <div class="sidebar">
+            <div class="profile-section">
+                <img id="profile-picture" class="profile-picture" alt="Profile Picture">
+                <div id="profile-picture-placeholder" class="profile-picture-placeholder"></div>
+                <span id="profile-hospital-name" class="profile-hospital-name">Default Hospital</span>
+            </div>
             <h2>Admin Panel</h2>
             <ul>
                 <li onclick="navigateTo('/dashboard')">Dashboard</li>
@@ -237,6 +314,7 @@
             </div>
         </div>
     </div>
+
     <script>
         function navigateTo(url) {
             try {
@@ -250,66 +328,57 @@
         async function loadDoctors() {
             const list = document.getElementById("doctor-list");
             list.innerHTML = "<p>Loading doctors...</p>";
-
             try {
-                console.log("Fetching doctors from /doctors/list-json");
                 const response = await fetch("/doctors/list-json", {
                     method: "GET",
                     headers: { "Content-Type": "application/json" },
                     credentials: "same-origin"
                 });
-                if (!response.ok) {
-                    const errorDetail = await response.json().catch(() => ({}));
-                    throw new Error(`Failed to fetch doctors: ${errorDetail.detail || response.statusText}`);
-                }
-                const doctors = await response.json();
-                console.log("Fetched doctors:", doctors);
 
-                if (!Array.isArray(doctors)) {
-                    throw new Error("Doctors response is not an array");
+                if (!response.ok) {
+                    throw new Error("Failed to fetch doctors");
                 }
+
+                const doctors = await response.json();
 
                 list.innerHTML = "";
-                if (doctors.length === 0) {
+                if (!Array.isArray(doctors) || doctors.length === 0) {
                     list.innerHTML = "<p>No doctors found.</p>";
-                } else {
-                    doctors.forEach(doc => {
-                        const item = document.createElement("div");
-                        item.className = "doctor-item";
-                        item.innerHTML = `
-                            <div class="doctor-details">
-                                <p><span class="label">Name:</span> Dr. ${doc.doctor_name || "N/A"}</p>
-                                <p><span class="label">Specializations:</span> ${Array.isArray(doc.specializations) ? doc.specializations.join(", ") : "None"}</p>
-                                <p><span class="label">Contact:</span> ${doc.contact || "N/A"}</p>
-                                <p><span class="label">Fees:</span> ₹${doc.fees !== undefined ? doc.fees.toFixed(2) : "N/A"}</p>
-                                <p><span class="label">Experience:</span> ${doc.experience !== undefined ? doc.experience + " years" : "N/A"}</p>
-                                <p><span class="label">Departments:</span> ${Array.isArray(doc.departments) ? doc.departments.join(", ") : "None"}</p>
-                                <p><span class="label">Days Available:</span> ${Array.isArray(doc.days_available) ? doc.days_available.join(", ") : "None"}</p>
-                                <p><span class="label">Time Slots:</span> ${Array.isArray(doc.time_slots) ? doc.time_slots.join(", ") : "None"}</p>
-                                <p><span class="label">Holidays:</span> ${Array.isArray(doc.holiday) ? doc.holiday.join(", ") : "None"}</p>
-                                <p><span class="label">Email:</span> ${doc.email || "None"}</p>
-                            </div>
-                            <div class="doctor-actions">
-                                <button class="edit" onclick="viewDetails(${doc.id})">Edit</button>
-                                <button class="delete" onclick="deleteDoctor(${doc.id})">Delete</button>
-                            </div>
-                        `;
-                        list.appendChild(item);
-                    });
+                    return;
                 }
+
+                doctors.forEach(doc => {
+                    const item = document.createElement("div");
+                    item.className = "doctor-item";
+                    item.innerHTML = `
+                        <div class="doctor-details">
+                            <p><span class="label">Name:</span> Dr. ${doc.doctor_name || "N/A"}</p>
+                            <p><span class="label">Specializations:</span> ${Array.isArray(doc.specializations) ? doc.specializations.join(", ") : "None"}</p>
+                            <p><span class="label">Fees:</span> ₹${doc.fees !== undefined ? doc.fees.toFixed(2) : "N/A"}</p>
+                            <p><span class="label">Experience:</span> ${doc.experience !== undefined ? doc.experience + " years" : "N/A"}</p>
+                            <p><span class="label">Departments:</span> ${Array.isArray(doc.departments) ? doc.departments.join(", ") : "None"}</p>
+                            <p><span class="label">Days Available:</span> ${Array.isArray(doc.days_available) ? doc.days_available.join(", ") : "None"}</p>
+                            <p><span class="label">Time Slots:</span> ${Array.isArray(doc.time_slots) ? doc.time_slots.join(", ") : "None"}</p>
+                            <p><span class="label">Not Available on:</span> ${Array.isArray(doc.holiday) ? doc.holiday.join(", ") : "None"}</p>
+                        </div>
+                        <div class="doctor-actions">
+                            <button class="edit" onclick="viewDetails(${doc.id})">Edit</button>
+                            <button class="delete" onclick="deleteDoctor(${doc.id})">Delete</button>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+
             } catch (error) {
                 console.error("Error loading doctors:", error);
-                list.innerHTML = `<p class="error-message">Error loading doctors: ${error.message}. Please try again later.</p>`;
+                list.innerHTML = `<p class="error-message">Error loading doctors: ${error.message}</p>`;
             }
         }
 
         async function deleteDoctor(doctorId) {
-            if (!confirm("Are you sure you want to delete this doctor?")) {
-                return;
-            }
+            if (!confirm("Are you sure you want to delete this doctor?")) return;
 
             try {
-                console.log(`Deleting doctor with ID: ${doctorId}`);
                 const response = await fetch(`/doctor/${doctorId}`, {
                     method: "DELETE",
                     headers: { "Content-Type": "application/json" },
@@ -317,24 +386,61 @@
                 });
 
                 if (!response.ok) {
-                    const errorDetail = await response.json().catch(() => ({}));
-                    throw new Error(`Failed to delete doctor: ${errorDetail.detail || response.statusText}`);
+                    throw new Error("Failed to delete doctor");
                 }
 
-                const data = await response.json();
-                alert(data.message || "Doctor deleted successfully.");
+                const result = await response.json();
+                alert(result.message || "Doctor deleted successfully");
                 loadDoctors();
+
             } catch (error) {
                 console.error("Error deleting doctor:", error);
-                alert(`Error deleting doctor: ${error.message}`);
+                alert(`Error: ${error.message}`);
             }
         }
 
-        function viewDetails(doctorId) {
-            navigateTo(`/edit-doctor?id=${doctorId}`);
+        function viewDetails(id) {
+            navigateTo(`/edit-doctor?id=${id}`);
         }
 
-        window.onload = loadDoctors;
+        async function loadProfile() {
+            const profilePicture = document.getElementById("profile-picture");
+            const profilePicturePlaceholder = document.getElementById("profile-picture-placeholder");
+            const profileHospitalName = document.getElementById("profile-hospital-name");
+
+            try {
+                const response = await fetch("/profile", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin"
+                });
+
+                if (!response.ok) throw new Error("Failed to load profile");
+
+                const profile = await response.json();
+
+                if (profile.profile_picture_url) {
+                    profilePicture.src = profile.profile_picture_url;
+                    profilePicture.style.display = "block";
+                    profilePicturePlaceholder.style.display = "none";
+                } else {
+                    profilePicturePlaceholder.textContent = profile.hospital_name?.charAt(0).toUpperCase() || "?";
+                    profilePicture.style.display = "none";
+                    profilePicturePlaceholder.style.display = "flex";
+                }
+
+                profileHospitalName.textContent = profile.hospital_name || "Unnamed Hospital";
+
+            } catch (error) {
+                console.error("Error loading profile:", error);
+                profileHospitalName.textContent = "Failed to load profile";
+            }
+        }
+
+        window.onload = () => {
+            loadProfile();
+            loadDoctors();
+        };
     </script>
 </body>
 </html>

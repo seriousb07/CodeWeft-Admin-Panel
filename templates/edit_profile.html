@@ -11,16 +11,13 @@
             box-sizing: border-box;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
-
         body {
             background-color: #e6f0fa;
         }
-
         .dashboard-container {
             display: flex;
             min-height: 100vh;
         }
-
         .sidebar {
             width: 280px;
             background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
@@ -31,18 +28,15 @@
             height: 100%;
             transition: width 0.3s ease;
         }
-
         .sidebar h2 {
             font-size: 26px;
             margin-bottom: 30px;
             text-align: center;
             letter-spacing: 1px;
         }
-
         .sidebar ul {
             list-style: none;
         }
-
         .sidebar ul li {
             margin: 10px 0;
             padding: 12px 15px;
@@ -54,24 +48,20 @@
             align-items: center;
             gap: 10px;
         }
-
         .sidebar ul li:hover {
             background-color: rgba(255, 255, 255, 0.2);
             transform: translateX(5px);
         }
-
         .sidebar ul li.active {
             background-color: #ffffff;
             color: #4fb4e2;
             font-weight: 600;
         }
-
         .main-content {
             flex: 1;
             margin-left: 280px;
             padding: 40px;
         }
-
         .header {
             background-color: white;
             padding: 25px;
@@ -82,13 +72,11 @@
             justify-content: space-between;
             align-items: center;
         }
-
         .header h1 {
             color: #2c3e50;
             font-size: 32px;
             font-weight: 600;
         }
-
         .form-container {
             background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
             padding: 40px;
@@ -98,15 +86,12 @@
             margin: 0 auto;
             transition: transform 0.3s ease;
         }
-
         .form-container:hover {
             transform: translateY(-5px);
         }
-
         .form-group {
             margin-bottom: 20px;
         }
-
         .form-group label {
             display: block;
             color: #2c3e50;
@@ -114,8 +99,7 @@
             margin-bottom: 8px;
             font-weight: 500;
         }
-
-        .form-group input {
+        .form-group input[type="text"] {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
@@ -123,13 +107,26 @@
             font-size: 16px;
             transition: border-color 0.3s ease;
         }
-
+        .form-group input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
         .form-group input:focus {
             outline: none;
             border-color: #4fb4e2;
             box-shadow: 0 0 5px rgba(79, 180, 226, 0.3);
         }
-
+        .profile-preview {
+            margin-top: 10px;
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: none;
+        }
         button {
             background-color: #4fb4e2;
             color: white;
@@ -141,46 +138,45 @@
             transition: background-color 0.3s ease, transform 0.2s ease;
             width: 100%;
         }
-
-        button:hover {
+        button:disabled {
+            background-color: #a0c8e8;
+            cursor: not-allowed;
+            transform: none;
+        }
+        button:hover:not(:disabled) {
             background-color: #3a9ccc;
             transform: translateY(-2px);
         }
-
         #message {
             color: #28a745;
             margin-top: 20px;
             text-align: center;
             font-size: 16px;
+            display: none;
         }
-
         #error-message {
             color: #dc3545;
             margin-top: 20px;
             text-align: center;
             font-size: 16px;
+            display: none;
         }
-
         @media (max-width: 768px) {
             .sidebar {
                 width: 80px;
                 padding: 20px 10px;
             }
-
             .sidebar h2 {
                 font-size: 20px;
             }
-
             .sidebar ul li {
                 font-size: 14px;
                 padding: 10px;
             }
-
             .main-content {
                 margin-left: 80px;
                 padding: 20px;
             }
-
             .form-container {
                 padding: 20px;
             }
@@ -192,12 +188,12 @@
         <div class="sidebar">
             <h2>Admin Panel</h2>
             <ul>
-                <li>Dashboard</li>
-                <li class="active">Edit Profile</li>
-                <li>Departments</li>
-                <li>Doctors</li>
-                <li>Change Password</li>
-                <li>Logout</li>
+                <li onclick="navigateTo('/dashboard')">Dashboard</li>
+                <li class="active" onclick="navigateTo('/edit-profile')">Edit Profile</li>
+                <li onclick="navigateTo('/departments')">Departments</li>
+                <li onclick="navigateTo('/doctors')">Doctors</li>
+                <li onclick="navigateTo('/change-password')">Change Password</li>
+                <li onclick="navigateTo('/logout')">Logout</li>
             </ul>
         </div>
         <div class="main-content">
@@ -205,70 +201,163 @@
                 <h1>Edit Profile</h1>
             </div>
             <div class="form-container">
-                <form id="edit-profile-form">
+                <form id="edit-profile-form" enctype="multipart/form-data">
                     <div class="form-group">
-                        <label for="admin_name">Name</label>
-                        <input type="text" id="admin_name" name="admin_name" required>
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required placeholder="Enter username">
                     </div>
                     <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" name="email" required>
+                        <label for="hospital_name">Hospital Name</label>
+                        <input type="text" id="hospital_name" name="hospital_name" required placeholder="Enter hospital name">
                     </div>
                     <div class="form-group">
-                        <label for="contact">Contact Number</label>
-                        <input type="text" id="contact" name="contact" required>
+                        <label for="profile_picture">Profile Picture</label>
+                        <input type="file" id="profile_picture" name="profile_picture" accept="image/*">
+                        <img id="profile-preview" class="profile-preview" alt="Profile Preview">
                     </div>
                     <button type="submit">Update Profile</button>
                 </form>
-                <p id="message" style="display: none;"></p>
-                <p id="error-message" style="display: none;"></p>
+                <p id="message"></p>
+                <p id="error-message"></p>
             </div>
         </div>
     </div>
     <script>
-        async function loadProfile() {
+        // Navigation helper
+        function navigateTo(url) {
             try {
-                const response = await fetch("/profile");
-                const profile = await response.json();
-                document.getElementById("admin_name").value = profile.name;
-                document.getElementById("email").value = profile.email;
-                document.getElementById("contact").value = profile.contact;
+                window.location.href = url;
             } catch (error) {
-                console.error("Error loading profile:", error);
+                console.error("Navigation failed:", error);
+                alert("Failed to navigate to " + url + ". Please check if the page exists or if the server is running.");
             }
         }
 
-        document.getElementById("edit-profile-form").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const admin_name = document.getElementById("admin_name").value;
-            const email = document.getElementById("email").value;
-            const contact = document.getElementById("contact").value;
+        // Load profile data
+        async function loadProfile() {
             const message = document.getElementById("message");
             const errorMessage = document.getElementById("error-message");
+            const preview = document.getElementById("profile-preview");
+            try {
+                console.log("Fetching profile from /profile");
+                const response = await fetch("/profile", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin"
+                });
+                if (!response.ok) {
+                    const errDetail = await response.json().catch(() => ({}));
+                    throw new Error(`Failed to fetch profile: ${errDetail.detail || response.statusText}`);
+                }
+                const profile = await response.json();
+                console.log("Fetched profile:", profile);
+                document.getElementById("username").value = profile.username || "";
+                document.getElementById("hospital_name").value = profile.hospital_name || "";
+                if (profile.profile_picture) {
+                    preview.src = profile.profile_picture;
+                    preview.style.display = "block";
+                }
+                errorMessage.style.display = "none";
+            } catch (error) {
+                console.error("Error loading profile:", error);
+                errorMessage.textContent = `Error: ${error.message}`;
+                errorMessage.style.display = "block";
+                message.style.display = "none";
+            }
+        }
+
+        // Preview profile picture
+        document.getElementById("profile_picture").addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            const preview = document.getElementById("profile-preview");
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    preview.src = event.target.result;
+                    preview.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = "none";
+            }
+        });
+
+        // Form submit handler
+        document.getElementById("edit-profile-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value.trim();
+            const hospital_name = document.getElementById("hospital_name").value.trim();
+            const profile_picture = document.getElementById("profile_picture").files[0];
+            const message = document.getElementById("message");
+            const errorMessage = document.getElementById("error-message");
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            // Hide messages
+            message.style.display = "none";
+            errorMessage.style.display = "none";
+
+            // Validation
+            if (!username || username.length < 3) {
+                errorMessage.textContent = "Username must be at least 3 characters long.";
+                errorMessage.style.display = "block";
+                return;
+            }
+            if (!hospital_name) {
+                errorMessage.textContent = "Please enter a valid hospital name.";
+                errorMessage.style.display = "block";
+                return;
+            }
+            if (profile_picture && !profile_picture.type.startsWith("image/")) {
+                errorMessage.textContent = "Please upload a valid image file.";
+                errorMessage.style.display = "block";
+                return;
+            }
+
+            submitBtn.disabled = true;
 
             try {
+                const formData = new FormData();
+                formData.append("username", username);
+                formData.append("hospital_name", hospital_name);
+                if (profile_picture) {
+                    formData.append("profile_picture", profile_picture);
+                }
+                console.log("Submitting profile update:", { username, hospital_name, profile_picture: profile_picture ? profile_picture.name : null });
+
                 const response = await fetch("/edit-profile", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ admin_name, email, contact })
+                    body: formData,
+                    credentials: "same-origin"
                 });
                 const data = await response.json();
+                console.log("Update profile response:", data);
+
                 if (response.ok) {
-                    message.textContent = data.message;
+                    message.textContent = data.message || "Profile updated successfully.";
                     message.style.display = "block";
                     errorMessage.style.display = "none";
+                    setTimeout(() => navigateTo("/dashboard"), 2000);
                 } else {
-                    errorMessage.textContent = data.detail;
+                    const errorDetail = typeof data.detail === 'string'
+                        ? data.detail
+                        : (data.detail && Array.isArray(data.detail))
+                          ? data.detail.map(item => item.error || JSON.stringify(item)).join(', ')
+                          : JSON.stringify(data.detail) || "Failed to update profile.";
+                    errorMessage.textContent = errorDetail;
                     errorMessage.style.display = "block";
                     message.style.display = "none";
                 }
             } catch (error) {
-                errorMessage.textContent = "An error occurred. Please try again.";
+                console.error("Error updating profile:", error);
+                errorMessage.textContent = `Error: ${error.message || "An error occurred. Please try again."}`;
                 errorMessage.style.display = "block";
                 message.style.display = "none";
+            } finally {
+                submitBtn.disabled = false;
             }
         });
 
+        // Load profile data on page load
         window.onload = loadProfile;
     </script>
 </body>

@@ -11,16 +11,13 @@
       box-sizing: border-box;
       font-family: 'Segoe UI', Arial, sans-serif;
     }
-
     body {
       background-color: #e6f0fa;
     }
-
     .dashboard-container {
       display: flex;
       min-height: 100vh;
     }
-
     .sidebar {
       width: 280px;
       background: linear-gradient(180deg, #4fb4e2 0%, #3a9ccc 100%);
@@ -31,18 +28,51 @@
       height: 100%;
       transition: width 0.3s ease;
     }
-
     .sidebar h2 {
       font-size: 26px;
       margin-bottom: 30px;
       text-align: center;
       letter-spacing: 1px;
     }
-
+    .profile-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .profile-picture {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #ffffff;
+      margin-bottom: 10px;
+      display: none; /* Hidden until image is loaded */
+    }
+    .profile-picture-placeholder {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4fb4e2;
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      border: 2px solid #ffffff;
+    }
+    .profile-hospital-name {
+      font-size: 18px;
+      font-weight: 500;
+      text-align: center;
+      word-break: break-word;
+      max-width: 240px; /* Prevent overflow in sidebar */
+    }
     .sidebar ul {
       list-style: none;
     }
-
     .sidebar ul li {
       margin: 10px 0;
       padding: 12px 15px;
@@ -54,24 +84,20 @@
       align-items: center;
       gap: 10px;
     }
-
     .sidebar ul li:hover {
       background-color: rgba(255, 255, 255, 0.2);
       transform: translateX(5px);
     }
-
     .sidebar ul li.active {
       background-color: #ffffff;
       color: #4fb4e2;
       font-weight: 600;
     }
-
     .main-content {
       flex: 1;
       margin-left: 280px;
       padding: 40px;
     }
-
     .header {
       background-color: white;
       padding: 25px;
@@ -82,13 +108,11 @@
       justify-content: space-between;
       align-items: center;
     }
-
     .header h1 {
       color: #2c3e50;
       font-size: 32px;
       font-weight: 600;
     }
-
     .form-container {
       background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
       padding: 40px;
@@ -98,19 +122,15 @@
       margin: 0 auto;
       transition: transform 0.3s ease;
     }
-
     .form-container:hover {
       transform: translateY(-5px);
     }
-
     .form-group {
       margin-bottom: 20px;
     }
-
     .form-group:last-child {
       margin-bottom: 10px;
     }
-
     .form-group label {
       display: block;
       color: #2c3e50;
@@ -118,7 +138,6 @@
       margin-bottom: 8px;
       font-weight: 500;
     }
-
     .form-group input, .form-group textarea {
       width: 100%;
       padding: 12px;
@@ -127,18 +146,15 @@
       font-size: 16px;
       transition: border-color 0.3s ease;
     }
-
     .form-group textarea {
       resize: vertical;
       min-height: 100px;
     }
-
     .form-group input:focus, .form-group textarea:focus {
       outline: none;
       border-color: #4fb4e2;
       box-shadow: 0 0 5px rgba(79, 180, 226, 0.3);
     }
-
     button {
       background-color: #4fb4e2;
       color: white;
@@ -150,26 +166,22 @@
       transition: background-color 0.3s ease, transform 0.2s ease;
       width: 100%;
     }
-
     button:hover {
       background-color: #3a9ccc;
       transform: translateY(-2px);
     }
-
     #message {
       color: #28a745;
       margin-top: 20px;
       text-align: center;
       font-size: 16px;
     }
-
     #error-message {
       color: #dc3545;
       margin-top: 20px;
       text-align: center;
       font-size: 16px;
     }
-
     .created-department {
       background-color: #f1f5f9;
       padding: 20px;
@@ -180,13 +192,11 @@
       align-items: center;
       gap: 15px;
     }
-
     .created-department p {
       color: #2c3e50;
       font-size: 16px;
       flex: 1;
     }
-
     .created-department button {
       background-color: #4fb4e2;
       color: white;
@@ -198,42 +208,46 @@
       transition: background-color 0.3s ease, transform 0.2s ease;
       width: auto;
     }
-
     .created-department button:hover {
       background-color: #3a9ccc;
       transform: translateY(-2px);
     }
-
     @media (max-width: 768px) {
       .sidebar {
         width: 80px;
         padding: 20px 10px;
       }
-
       .sidebar h2 {
         font-size: 20px;
       }
-
+      .profile-section {
+        margin-bottom: 20px;
+      }
+      .profile-picture, .profile-picture-placeholder {
+        width: 50px;
+        height: 50px;
+        font-size: 18px;
+      }
+      .profile-hospital-name {
+        font-size: 14px;
+        display: none; /* Hide hospital name in collapsed sidebar */
+      }
       .sidebar ul li {
         font-size: 14px;
         padding: 10px;
       }
-
       .main-content {
         margin-left: 80px;
         padding: 20px;
       }
-
       .form-container {
         padding: 20px;
       }
-
       .created-department {
         flex-direction: column;
         gap: 10px;
         align-items: flex-start;
       }
-
       .created-department button {
         width: auto;
         align-self: flex-start;
@@ -244,6 +258,11 @@
 <body>
   <div class="dashboard-container">
     <div class="sidebar">
+      <div class="profile-section">
+        <img id="profile-picture" class="profile-picture" alt="Profile Picture">
+        <div id="profile-picture-placeholder" class="profile-picture-placeholder"></div>
+        <span id="profile-hospital-name" class="profile-hospital-name">Default Hospital</span>
+      </div>
       <h2>Admin Panel</h2>
       <ul>
         <li onclick="navigateTo('/dashboard')">Dashboard</li>
@@ -262,7 +281,7 @@
         <form id="create-department-form">
           <div class="form-group">
             <label for="name">Department Name</label>
-            <input type="text" id="name" name="name" required />
+            <input type="text" id="name" name="name" required>
           </div>
           <div class="form-group">
             <label for="description">Description</label>
@@ -278,7 +297,6 @@
       </div>
     </div>
   </div>
-
   <script>
     function navigateTo(url) {
       try {
@@ -286,6 +304,48 @@
       } catch (error) {
         console.error("Navigation failed:", error);
         alert("Failed to navigate to " + url);
+      }
+    }
+
+    async function loadProfile() {
+      const profilePicture = document.getElementById("profile-picture");
+      const profilePicturePlaceholder = document.getElementById("profile-picture-placeholder");
+      const profileHospitalName = document.getElementById("profile-hospital-name");
+      const errorMessage = document.getElementById("error-message");
+
+      try {
+        console.log("Fetching profile from /profile");
+        const response = await fetch("/profile", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin"
+        });
+        if (!response.ok) {
+          const errDetail = await response.json().catch(() => ({}));
+          throw new Error(`Failed to fetch profile: ${errDetail.detail || response.statusText}`);
+        }
+        const profile = await response.json();
+        console.log("Profile fetched:", profile);
+
+        // Update profile picture and hospital name
+        if (profile.profile_picture) {
+          profilePicture.src = profile.profile_picture;
+          profilePicture.style.display = "block";
+          profilePicturePlaceholder.style.display = "none";
+        } else {
+          profilePicture.style.display = "none";
+          profilePicturePlaceholder.style.display = "flex";
+          profilePicturePlaceholder.textContent = profile.hospital_name ? profile.hospital_name.charAt(0).toUpperCase() : "H";
+        }
+        profileHospitalName.textContent = profile.hospital_name || "Default Hospital";
+      } catch (error) {
+        console.error("Error loading profile:", error);
+        errorMessage.textContent = `Error loading profile: ${error.message}`;
+        errorMessage.style.display = "block";
+        profilePicture.style.display = "none";
+        profilePicturePlaceholder.style.display = "flex";
+        profilePicturePlaceholder.textContent = "H";
+        profileHospitalName.textContent = "Default Hospital";
       }
     }
 
@@ -313,7 +373,7 @@
         const data = await response.json();
 
         if (response.ok) {
-          message.textContent = `${data.message} `;
+          message.textContent = data.message || "Department created successfully.";
           const viewLink = document.createElement("a");
           viewLink.href = "#";
           viewLink.textContent = "Click here to view all";
@@ -346,6 +406,8 @@
       alert(`Viewing details for department: ${deptName}`);
       // You can expand this function as needed
     }
+
+    document.addEventListener("DOMContentLoaded", loadProfile);
   </script>
 </body>
 </html>

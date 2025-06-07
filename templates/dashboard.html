@@ -30,9 +30,45 @@
         }
         .sidebar h2 {
             font-size: 26px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             text-align: center;
             letter-spacing: 1px;
+        }
+        .profile-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .profile-picture {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ffffff;
+            margin-bottom: 10px;
+            display: none; /* Hidden until image is loaded */
+        }
+        .profile-picture-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4fb4e2;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border: 2px solid #ffffff;
+        }
+        .profile-hospital-name {
+            font-size: 18px;
+            font-weight: 500;
+            text-align: center;
+            word-break: break-word;
+            max-width: 240px; /* Prevent overflow in sidebar */
         }
         .sidebar ul {
             list-style: none;
@@ -135,9 +171,22 @@
             .sidebar h2 {
                 font-size: 20px;
             }
+            .profile-section {
+                margin-bottom: 20px;
+            }
+            .profile-picture, .profile-picture-placeholder {
+                width: 50px;
+                height: 50px;
+                font-size: 18px;
+            }
+            .profile-hospital-name {
+                font-size: 14px;
+                display: none; /* Hide hospital name in collapsed sidebar */
+            }
             .sidebar ul li {
                 font-size: 14px;
                 padding: 10px;
+                justify-content: center;
             }
             .main-content {
                 margin-left: 80px;
@@ -159,6 +208,11 @@
 <body>
     <div class="dashboard-container">
         <div class="sidebar">
+            <div class="profile-section">
+                <img id="profile-picture" class="profile-picture" alt="Profile Picture">
+                <div id="profile-picture-placeholder" class="profile-picture-placeholder"></div>
+                <span id="profile-hospital-name" class="profile-hospital-name">Default Hospital</span>
+            </div>
             <h2>Admin Panel</h2>
             <ul>
                 <li class="active" onclick="navigateTo('/dashboard')">Dashboard</li>
@@ -166,7 +220,7 @@
                 <li onclick="navigateTo('/departments')">Departments</li>
                 <li onclick="navigateTo('/doctors')">Doctors</li>
                 <li onclick="navigateTo('/change-password')">Change Password</li>
-                <li onclick="navigateTo='/logout')">Logout</li>
+                <li onclick="navigateTo('/logout')">Logout</li>
             </ul>
         </div>
         <div class="main-content">
@@ -201,9 +255,38 @@
 
         async function loadSummary() {
             const errorMessage = document.getElementById("error-message");
+            const profilePicture = document.getElementById("profile-picture");
+            const profilePicturePlaceholder = document.getElementById("profile-picture-placeholder");
+            const profileHospitalName = document.getElementById("profile-hospital-name");
             errorMessage.style.display = "none";
 
             try {
+                // Fetch profile
+                console.log("Fetching profile from /profile");
+                const profileResponse = await fetch("/profile", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin"
+                });
+                if (!profileResponse.ok) {
+                    const errDetail = await profileResponse.json().catch(() => ({}));
+                    throw new Error(`Failed to fetch profile: ${errDetail.detail || profileResponse.statusText}`);
+                }
+                const profile = await profileResponse.json();
+                console.log("Profile fetched:", profile);
+
+                // Update profile picture and hospital name
+                if (profile.profile_picture) {
+                    profilePicture.src = profile.profile_picture;
+                    profilePicture.style.display = "block";
+                    profilePicturePlaceholder.style.display = "none";
+                } else {
+                    profilePicture.style.display = "none";
+                    profilePicturePlaceholder.style.display = "flex";
+                    profilePicturePlaceholder.textContent = profile.hospital_name ? profile.hospital_name.charAt(0).toUpperCase() : "H";
+                }
+                profileHospitalName.textContent = profile.hospital_name || "Default Hospital";
+
                 // Fetch departments
                 console.log("Fetching departments from /departments/list-json");
                 const deptResponse = await fetch("/departments/list-json", {
@@ -243,6 +326,11 @@
                 console.error("Error loading summary:", error);
                 errorMessage.textContent = `Error loading summary: ${error.message}. Please try refreshing the page.`;
                 errorMessage.style.display = "block";
+                // Set fallback profile data
+                profilePicture.style.display = "none";
+                profilePicturePlaceholder.style.display = "flex";
+                profilePicturePlaceholder.textContent = "H";
+                profileHospitalName.textContent = "Default Hospital";
             }
         }
 
