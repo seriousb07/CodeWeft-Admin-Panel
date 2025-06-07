@@ -246,28 +246,34 @@
             const list = document.getElementById("department-list");
             list.innerHTML = "<p>Loading departments...</p>";
             try {
-                const response = await fetch("/departments", {
+                const response = await fetch("/departments/list-json", {
                     method: "GET",
-                    headers: { "Content-Type": "application/json" }
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin"
                 });
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
                 }
                 const departments = await response.json();
+                console.log("Fetched departments:", departments); // Debug log
                 list.innerHTML = "";
-                if (departments.length === 0) {
+                if (!Array.isArray(departments) || departments.length === 0) {
                     list.innerHTML = "<p>No departments found.</p>";
-                } else {
-                    departments.forEach(dept => {
+                    return;
+                }
+                departments.forEach(dept => {
+                    if (dept.name && dept.description) {
                         const item = document.createElement("div");
                         item.className = "department-item";
                         item.innerHTML = `
                             <p>${dept.name} - ${dept.description}</p>
-                            <button onclick="viewDetails('${dept.name}')">View Details</button>
+                            <button onclick="viewDetails('${encodeURIComponent(dept.name)}')">View Details</button>
                         `;
                         list.appendChild(item);
-                    });
-                }
+                    } else {
+                        console.warn("Invalid department data:", dept);
+                    }
+                });
             } catch (error) {
                 console.error("Error loading departments:", error);
                 list.innerHTML = "<p>Error loading departments. Please try again later.</p>";
@@ -275,7 +281,7 @@
         }
 
         function viewDetails(deptName) {
-            navigateTo(`/department-details?name=${encodeURIComponent(deptName)}`);
+            navigateTo(`/department-details?name=${deptName}`);
         }
 
         window.onload = loadDepartments;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Edit Doctor</title>
+  <title>Create Doctor</title>
   <style>
     * {
       margin: 0;
@@ -82,7 +82,7 @@
       padding: 40px;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-      max-width: 500px;
+      max-width: 600px;
       margin: 0 auto;
       transition: transform 0.3s ease;
     }
@@ -151,6 +151,56 @@
       font-size: 16px;
       display: none;
     }
+    .day-buttons, .time-slots, .department-checkboxes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .day-button, .time-slot, .department-checkbox label {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      background-color: #f1f5f9;
+      transition: background-color 0.3s ease;
+    }
+    .day-button.selected, .time-slot.selected, .department-checkbox input:checked + label {
+      background-color: #4fb4e2;
+      color: white;
+      border-color: #4fb4e2;
+    }
+    .department-checkbox input {
+      display: none;
+    }
+    .specialization-container {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .add-specialization {
+      background-color: #28a745;
+      padding: 8px 12px;
+      width: auto;
+      font-size: 14px;
+    }
+    .add-specialization:hover {
+      background-color: #218838;
+    }
+    .specialization-item {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .remove-specialization {
+      background-color: #dc3545;
+      padding: 8px 12px;
+      width: auto;
+      font-size: 14px;
+    }
+    .remove-specialization:hover {
+      background-color: #c82333;
+    }
     @media (max-width: 768px) {
       .sidebar {
         width: 80px;
@@ -188,17 +238,22 @@
     </div>
     <div class="main-content">
       <div class="header">
-        <h1>Edit Doctor</h1>
+        <h1>Create Doctor</h1>
       </div>
       <div class="form-container">
-        <form id="edit-doctor-form">
+        <form id="create-doctor-form">
           <div class="form-group">
             <label for="doctor_name">Doctor Name</label>
             <input type="text" id="doctor_name" name="doctor_name" required />
           </div>
-          <div class="form-group">
-            <label for="specialization">Specialization</label>
-            <input type="text" id="specialization" name="specialization" required />
+          <div class="form-group" id="specializations-group">
+            <label>Specializations</label>
+            <div id="specialization-list">
+              <div class="specialization-item">
+                <input type="text" class="specialization-input" name="specializations[]" required placeholder="Enter specialization" />
+                <button type="button" class="add-specialization" onclick="addSpecialization()">+</button>
+              </div>
+            </div>
           </div>
           <div class="form-group">
             <label for="contact">Contact Number</label>
@@ -212,13 +267,56 @@
             />
           </div>
           <div class="form-group">
-            <label for="department">Department</label>
-            <select id="department" name="department" required>
-              <option value="" disabled selected>Select Department</option>
-              <!-- Departments dynamically populated -->
-            </select>
+            <label for="fees">Appointment Fee (₹)</label>
+            <input
+              type="number"
+              id="fees"
+              name="fees"
+              min="0"
+              step="1"
+              required
+              placeholder="Enter fee in rupees"
+            />
           </div>
-          <button type="submit">Update Doctor</button>
+          <div class="form-group">
+            <label for="experience">Experience (Years)</label>
+            <input
+              type="number"
+              id="experience"
+              name="experience"
+              min="0"
+              step="1"
+              required
+              placeholder="Enter years of experience"
+            />
+          </div>
+          <div class="form-group">
+            <label>Departments</label>
+            <div class="department-checkboxes" id="department-checkboxes">
+              <!-- Departments dynamically populated as checkboxes -->
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Days Available</label>
+            <div class="day-buttons">
+              <div class="day-button" data-day="Monday">Monday</div>
+              <div class="day-button" data-day="Tuesday">Tuesday</div>
+              <div class="day-button" data-day="Wednesday">Wednesday</div>
+              <div class="day-button" data-day="Thursday">Thursday</div>
+              <div class="day-button" data-day="Friday">Friday</div>
+              <div class="day-button" data-day="Saturday">Saturday</div>
+              <div class="day-button" data-day="Sunday">Sunday</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Time Slots</label>
+            <div class="time-slots">
+              <div class="time-slot" data-slot="Morning (9 AM - 12 PM)">Morning (9 AM - 12 PM)</div>
+              <div class="time-slot" data-slot="Afternoon (12 PM - 4 PM)">Afternoon (12 PM - 4 PM)</div>
+              <div class="time-slot" data-slot="Evening (4 PM - 8 PM)">Evening (4 PM - 8 PM)</div>
+            </div>
+          </div>
+          <button type="submit">Create Doctor</button>
         </form>
         <p id="message"></p>
         <p id="error-message"></p>
@@ -237,79 +335,150 @@
       }
     }
 
-    // Load doctor data and departments
-    async function loadDoctor() {
+    // Load departments as checkboxes
+    async function loadDepartments() {
+      const message = document.getElementById("message");
+      const errorMessage = document.getElementById("error-message");
+      const container = document.getElementById("department-checkboxes");
+      container.innerHTML = '';
+
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const doctorId = urlParams.get("id");
-        if (!doctorId) throw new Error("Doctor ID not provided in URL");
-
-        // Fetch doctor info
-        const doctorRes = await fetch(`/doctor/${doctorId}`);
-        if (!doctorRes.ok) {
-          const errDetail = await doctorRes.json();
-          throw new Error(`HTTP error! status: ${doctorRes.status}, detail: ${JSON.stringify(errDetail)}`);
-        }
-        const doctor = await doctorRes.json();
-        if (!doctor) throw new Error("Doctor not found");
-
-        // Populate doctor fields
-        document.getElementById("doctor_name").value = doctor.doctor_name || "";
-        document.getElementById("specialization").value = doctor.specialization || "";
-        document.getElementById("contact").value = doctor.contact || "";
-
-        // Fetch departments
-        const deptRes = await fetch("/departments");
-        if (!deptRes.ok) throw new Error(`HTTP error! status: ${deptRes.status}`);
-
-        const departments = await deptRes.json();
-        const select = document.getElementById("department");
-        select.innerHTML = '<option value="" disabled>Select Department</option>'; // reset options
-
-        departments.forEach((dept) => {
-          const option = document.createElement("option");
-          option.value = dept.name;
-          option.textContent = dept.name;
-          if (dept.name === doctor.department) {
-            option.selected = true;
-          }
-          select.appendChild(option);
+        console.log("Fetching departments from /departments/list-json");
+        const response = await fetch("/departments/list-json", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin"
         });
+        if (!response.ok) {
+          const errDetail = await response.json().catch(() => ({}));
+          throw new Error(`Failed to fetch departments: ${errDetail.detail || response.statusText}`);
+        }
+        const departments = await response.json();
+        console.log("Fetched departments:", departments);
+
+        if (!Array.isArray(departments)) {
+          throw new Error("Departments response is not an array");
+        }
+
+        if (departments.length === 0) {
+          errorMessage.textContent = "No departments available. Please create a department first.";
+          errorMessage.style.display = "block";
+          return;
+        }
+
+        departments.forEach((dept, index) => {
+          console.log(`Processing department ${index + 1}:`, dept);
+          if (dept.name) {
+            const div = document.createElement("div");
+            div.className = "department-checkbox";
+            div.innerHTML = `
+              <input type="checkbox" id="dept-${index}" name="departments" value="${dept.name}">
+              <label for="dept-${index}">${dept.name}</label>
+            `;
+            container.appendChild(div);
+          } else {
+            console.warn("Invalid department data:", dept);
+          }
+        });
+
+        if (container.children.length === 0) {
+          errorMessage.textContent = "No valid departments found.";
+          errorMessage.style.display = "block";
+        }
       } catch (error) {
-        console.error("Error loading doctor:", error);
-        const errorMessage = document.getElementById("error-message");
+        console.error("Error loading departments:", error);
         errorMessage.textContent = `Error: ${error.message}`;
         errorMessage.style.display = "block";
+        message.style.display = "none";
       }
     }
 
+    // Add specialization input
+    function addSpecialization() {
+      const specializationList = document.getElementById("specialization-list");
+      const newItem = document.createElement("div");
+      newItem.className = "specialization-item";
+      newItem.innerHTML = `
+        <input type="text" class="specialization-input" name="specializations[]" required placeholder="Enter specialization" />
+        <button type="button" class="remove-specialization" onclick="this.parentElement.remove()">-</button>
+      `;
+      specializationList.appendChild(newItem);
+    }
+
+    // Toggle day selection
+    document.querySelectorAll(".day-button").forEach(button => {
+      button.addEventListener("click", () => {
+        button.classList.toggle("selected");
+      });
+    });
+
+    // Toggle time slot selection
+    document.querySelectorAll(".time-slot").forEach(slot => {
+      slot.addEventListener("click", () => {
+        slot.classList.toggle("selected");
+      });
+    });
+
     // Form submit handler
-    document.getElementById("edit-doctor-form").addEventListener("submit", async (e) => {
+    document.getElementById("create-doctor-form").addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const doctor_name = document.getElementById("doctor_name").value.trim();
-      const specialization = document.getElementById("specialization").value.trim();
+      const specializationInputs = document.querySelectorAll(".specialization-input");
+      const specializations = Array.from(specializationInputs)
+        .map(input => input.value.trim())
+        .filter(val => val);
       const contact = document.getElementById("contact").value.trim();
-      const department = document.getElementById("department").value;
+      const fees = parseFloat(document.getElementById("fees").value);
+      const experience = parseInt(document.getElementById("experience").value);
+      const departmentCheckboxes = document.querySelectorAll('input[name="departments"]:checked');
+      const departments = Array.from(departmentCheckboxes).map(checkbox => checkbox.value);
+      const days_available = Array.from(document.querySelectorAll(".day-button.selected"))
+        .map(button => button.dataset.day);
+      const time_slots = Array.from(document.querySelectorAll(".time-slot.selected"))
+        .map(slot => slot.dataset.slot);
 
       const message = document.getElementById("message");
       const errorMessage = document.getElementById("error-message");
       const submitBtn = e.target.querySelector('button[type="submit"]');
-      const urlParams = new URLSearchParams(window.location.search);
-      const doctorId = urlParams.get("id");
 
       // Hide messages
       message.style.display = "none";
       errorMessage.style.display = "none";
 
-      // Basic client validation for contact length and department selection
+      // Validation
       if (contact.length !== 10 || !/^\d{10}$/.test(contact)) {
         errorMessage.textContent = "Please enter a valid 10-digit contact number.";
         errorMessage.style.display = "block";
         return;
       }
-      if (!department) {
-        errorMessage.textContent = "Please select a department.";
+      if (specializations.length === 0) {
+        errorMessage.textContent = "Please enter at least one specialization.";
+        errorMessage.style.display = "block";
+        return;
+      }
+      if (isNaN(fees) || fees < 0) {
+        errorMessage.textContent = "Please enter a valid appointment fee.";
+        errorMessage.style.display = "block";
+        return;
+      }
+      if (isNaN(experience) || experience < 0) {
+        errorMessage.textContent = "Please enter a valid number of years for experience.";
+        errorMessage.style.display = "block";
+        return;
+      }
+      if (departments.length === 0) {
+        errorMessage.textContent = "Please select at least one department.";
+        errorMessage.style.display = "block";
+        return;
+      }
+      if (days_available.length === 0) {
+        errorMessage.textContent = "Please select at least one day of availability.";
+        errorMessage.style.display = "block";
+        return;
+      }
+      if (time_slots.length === 0) {
+        errorMessage.textContent = "Please select at least one time slot.";
         errorMessage.style.display = "block";
         return;
       }
@@ -317,29 +486,68 @@
       submitBtn.disabled = true;
 
       try {
-        const response = await fetch(`/doctor/${doctorId}`, {
-          method: "PUT",
+        const doctorData = {
+          doctor_name,
+          specializations,
+          contact,
+          fees,
+          experience,
+          departments,
+          days_available,
+          time_slots
+        };
+        console.log("Submitting new doctor:", doctorData);
+
+        const response = await fetch("/create-doctor", {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ doctor_name, specialization, contact, department }),
+          credentials: "same-origin",
+          body: JSON.stringify(doctorData),
         });
 
         const data = await response.json();
+        console.log("Create doctor response:", data);
 
         if (response.ok) {
-          message.textContent = data.message || "Doctor updated successfully.";
+          // Ensure data.message is a string
+          const successMessage = typeof data.message === 'string'
+            ? data.message
+            : (data.message && typeof data.message === 'object' && data.message.text)
+              ? data.message.text
+              : JSON.stringify(data.message) || "Doctor created successfully.";
+          message.textContent = successMessage;
           message.style.display = "block";
           errorMessage.style.display = "none";
+
+          // Reset form
+          e.target.reset();
+          document.getElementById("specialization-list").innerHTML = `
+            <div class="specialization-item">
+              <input type="text" class="specialization-input" name="specializations[]" required placeholder="Enter specialization" />
+              <button type="button" class="add-specialization" onclick="addSpecialization()">+</button>
+            </div>
+          `;
+          document.querySelectorAll(".day-button, .time-slot").forEach(el => el.classList.remove("selected"));
+          document.querySelectorAll('input[name="departments"]').forEach(checkbox => checkbox.checked = false);
+          await loadDepartments();
 
           setTimeout(() => {
             navigateTo("/doctors");
           }, 2000);
         } else {
-          errorMessage.textContent = data.detail || "Failed to update doctor.";
+          // Ensure data.detail is a string
+          const errorDetail = typeof data.detail === 'string'
+            ? data.detail
+            : (data.detail && Array.isArray(data.detail))
+              ? data.detail.map(item => item.error || JSON.stringify(item)).join(', ')
+              : JSON.stringify(data.detail) || "Failed to create doctor.";
+          errorMessage.textContent = errorDetail;
           errorMessage.style.display = "block";
           message.style.display = "none";
         }
       } catch (error) {
-        errorMessage.textContent = "An error occurred. Please try again.";
+        console.error("Error creating doctor:", error);
+        errorMessage.textContent = error.message || "An error occurred. Please try again.";
         errorMessage.style.display = "block";
         message.style.display = "none";
       } finally {
@@ -347,8 +555,8 @@
       }
     });
 
-    // Load doctor on page load
-    window.onload = loadDoctor;
+    // Load departments on page load
+    window.onload = loadDepartments;
   </script>
 </body>
 </html>

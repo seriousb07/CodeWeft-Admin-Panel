@@ -3,15 +3,41 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from typing import List, Optional
 import mysql.connector
+import json
 from database import get_db_connection
 from models import UserLogin, UserChangePassword
 from auth import hash_password, verify_password
 
-# Define a Pydantic model for department input
+# Define Pydantic models
 class DepartmentCreate(BaseModel):
     name: str
     description: str
+
+class DoctorCreate(BaseModel):
+    doctor_name: str
+    specializations: List[str]  # Updated to plural, list to match frontend
+    contact: str
+    fees: float
+    experience: int
+    departments: List[str]  # Updated to plural, list to match frontend
+    days_available: List[str]
+    time_slots: List[str]
+    holiday: Optional[List[str]] = None  # Optional field
+    email: Optional[str] = None  # Optional field
+
+class DoctorUpdate(BaseModel):
+    doctor_name: str
+    specializations: List[str]  # Updated to plural
+    contact: str
+    fees: float
+    experience: int
+    departments: List[str]  # Updated to plural
+    days_available: List[str]
+    time_slots: List[str]
+    holiday: Optional[List[str]] = None
+    email: Optional[str] = None
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -55,8 +81,6 @@ async def login(user: UserLogin):
     if not db_user or not verify_password(user.password, db_user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # You might want to set some session cookie here for real auth
-
     return {"redirect": "/dashboard"}
 
 # Dashboard page
@@ -94,13 +118,12 @@ async def edit_profile_page(request: Request):
 
     return templates.TemplateResponse("edit_profile.html", {"request": request, "profile": profile})
 
-# Define a Pydantic model for editing profile (correct fields)
+# Edit Profile endpoint
 class EditProfileModel(BaseModel):
     name: str
     email: str
     contact: str
 
-# Edit Profile endpoint (POST)
 @app.post("/edit-profile")
 async def edit_profile(profile: EditProfileModel):
     connection = get_db_connection()
@@ -118,18 +141,15 @@ async def edit_profile(profile: EditProfileModel):
 
     return {"message": "Profile updated successfully"}
 
-# Logout page (GET shows confirmation page)
+# Logout page
 @app.get("/logout", response_class=HTMLResponse)
 async def logout_page(request: Request):
     return templates.TemplateResponse("logout.html", {"request": request})
 
-# Logout endpoint (POST clears cookie/session)
+# Logout endpoint
 @app.post("/logout")
 async def logout(response: Response):
-    # Clear cookie by setting empty value and immediate expiry
-    response.delete_cookie(key="session_token")  # adjust key if different in your app
-
-    # Return JSON success message
+    response.delete_cookie(key="session_token")
     return JSONResponse(content={"message": "Logged out successfully"}, status_code=status.HTTP_200_OK)
 
 # Create Department page
@@ -145,7 +165,6 @@ async def create_department(department: DepartmentCreate):
         raise HTTPException(status_code=500, detail="Database connection failed")
 
     cursor = connection.cursor()
-
     try:
         cursor.execute(
             "INSERT INTO departments (name, description) VALUES (%s, %s)",
@@ -165,6 +184,118 @@ async def create_department(department: DepartmentCreate):
 @app.get("/create-doctor", response_class=HTMLResponse)
 async def create_doctor_page(request: Request):
     return templates.TemplateResponse("create_doctor.html", {"request": request})
+
+# Create Doctor endpoint
+@app.post("/create-doctor")
+async def create_doctor(doctor: DoctorCreate):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO doctors (doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                doctor.doctor_name,
+                json.dumps(doctor.specializations),
+                doctor.contact,
+                doctor.fees,
+                doctor.experience,
+                json.dumps(doctor.departments),
+                json.dumps(doctor.days_available),
+                json.dumps(doctor.time_slots),
+                json.dumps(doctor.holiday) if doctor.holiday else None,
+                doctor.email
+            )
+        )
+        connection.commit()
+    except mysql.connector.Error as err:
+        connection.rollback()
+        error_message = str(err) if err else "Unknown database error"
+        raise HTTPException(status_code=400, detail=f"Database error: {error_message}")
+    finally:
+        cursor.close()
+        connection.close()
+
+    return {"message": "Doctor created successfully!"}
+
+# Get Doctor endpoint
+@app.get("/doctor/{doctor_id}")
+async def get_doctor(doctor_id: int):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute(
+        """
+        SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
+        FROM doctors WHERE id = %s
+        """,
+        (doctor_id,)
+    )
+    doctor = cursor.fetchone()
+    cursor.close()
+    connection.close()
+
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    # Convert JSON strings back to lists for the response
+    doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
+    doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
+    doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
+    doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
+    doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+
+    return doctor
+
+# Update Doctor endpoint
+@app.put("/doctor/{doctor_id}")
+async def update_doctor(doctor_id: int, doctor: DoctorUpdate):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            """
+            UPDATE doctors
+            SET doctor_name = %s, specializations = %s, contact = %s, fees = %s, experience = %s,
+                departments = %s, days_available = %s, time_slots = %s, holiday = %s, email = %s
+            WHERE id = %s
+            """,
+            (
+                doctor.doctor_name,
+                json.dumps(doctor.specializations),
+                doctor.contact,
+                doctor.fees,
+                doctor.experience,
+                json.dumps(doctor.departments),
+                json.dumps(doctor.days_available),
+                json.dumps(doctor.time_slots),
+                json.dumps(doctor.holiday) if doctor.holiday else None,
+                doctor.email,
+                doctor_id
+            )
+        )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+        connection.commit()
+    except mysql.connector.Error as err:
+        connection.rollback()
+        error_message = str(err) if err else "Unknown database error"
+        raise HTTPException(status_code=400, detail=f"Database error: {error_message}")
+    finally:
+        cursor.close()
+        connection.close()
+
+    return {"message": "Doctor updated successfully"}
 
 # Change password endpoint
 @app.post("/change-password")
@@ -206,7 +337,7 @@ async def list_departments_json():
     connection.close()
     return departments
 
-# View All Departments as HTML page (optional)
+# View All Departments as HTML page
 @app.get("/departments/list", response_class=HTMLResponse)
 async def list_departments(request: Request):
     connection = get_db_connection()
@@ -229,9 +360,22 @@ async def list_doctors(request: Request):
         raise HTTPException(status_code=500, detail="Database connection failed")
 
     cursor = connection.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM doctors")
+    cursor.execute(
+        """
+        SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
+        FROM doctors
+        """
+    )
     doctors = cursor.fetchall()
     cursor.close()
     connection.close()
+
+    # Convert JSON strings to lists for template rendering
+    for doctor in doctors:
+        doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
+        doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
+        doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
+        doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
+        doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
 
     return templates.TemplateResponse("doctors_list.html", {"request": request, "doctors": doctors})
