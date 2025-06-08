@@ -36,6 +36,42 @@
       text-align: center;
       letter-spacing: 1px;
     }
+    .profile-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .profile-picture {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #ffffff;
+      margin-bottom: 10px;
+      display: none;
+    }
+    .profile-picture-placeholder {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4fb4e2;
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      border: 2px solid #ffffff;
+    }
+    .profile-hospital-name {
+      font-size: 18px;
+      font-weight: 500;
+      text-align: center;
+      word-break: break-word;
+      max-width: 240px;
+    }
     .sidebar ul {
       list-style: none;
     }
@@ -223,6 +259,18 @@
       .sidebar h2 {
         font-size: 20px;
       }
+      .profile-section {
+        margin-bottom: 20px;
+      }
+      .profile-picture, .profile-picture-placeholder {
+        width: 50px;
+        height: 50px;
+        font-size: 18px;
+      }
+      .profile-hospital-name {
+        font-size: 14px;
+        display: none;
+      }
       .sidebar ul li {
         font-size: 14px;
         padding: 10px;
@@ -240,6 +288,11 @@
 <body>
   <div class="dashboard-container">
     <div class="sidebar">
+      <div class="profile-section">
+        <img id="profile-picture" class="profile-picture" alt="Profile Picture">
+        <div id="profile-picture-placeholder" class="profile-picture-placeholder"></div>
+        <span id="profile-hospital-name" class="profile-hospital-name">Default Hospital</span>
+      </div>
       <h2>Admin Panel</h2>
       <ul>
         <li onclick="navigateTo('/dashboard')">Dashboard</li>
@@ -365,9 +418,53 @@
       }
     }
 
+    // Load profile data
+    async function loadProfile() {
+      const profilePicture = document.getElementById("profile-picture");
+      const profilePicturePlaceholder = document.getElementById("profile-picture-placeholder");
+      const profileHospitalName = document.getElementById("profile-hospital-name");
+
+      try {
+        console.log("Fetching profile from /profile");
+        const response = await fetch("/profile", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin"
+        });
+
+        if (!response.ok) {
+          const errDetail = await response.json().catch(() => ({}));
+          throw new Error(`Failed to fetch profile: ${errDetail.detail || response.statusText}`);
+        }
+
+        const profileData = await response.json();
+        console.log("Profile fetched:", profileData);
+
+        if (profileData.profile_picture) {
+          profilePicture.src = profileData.profile_picture;
+          profilePicture.style.display = "block";
+          profilePicturePlaceholder.style.display = "none";
+        } else {
+          profilePicture.style.display = "none";
+          profilePicturePlaceholder.style.display = "block";
+          profilePicturePlaceholder.textContent = profileData.hospital_name
+            ? profileData.hospital_name.charAt(0).toUpperCase()
+            : "H";
+        }
+        profileHospitalName.textContent = profileData.hospital_name || "Default Hospital";
+
+      } catch (error) {
+        console.error("Error loading profile:", error);
+        profilePicture.style.display = "none";
+        profilePicturePlaceholder.style.display = "block";
+        profilePicturePlaceholder.textContent = "H";
+        profileHospitalName.textContent = "Default Hospital";
+      }
+    }
+
     // Load departments as checkboxes
     async function loadDepartments() {
-      const message = document.getElementById("message");
+      const messageElement = document.getElementById("message");
       const errorMessage = document.getElementById("error-message");
       const container = document.getElementById("department-checkboxes");
       container.innerHTML = '';
@@ -379,10 +476,12 @@
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin"
         });
+
         if (!response.ok) {
           const errDetail = await response.json().catch(() => ({}));
           throw new Error(`Failed to fetch departments: ${errDetail.detail || response.statusText}`);
         }
+
         const departments = await response.json();
         console.log("Fetched departments:", departments);
 
@@ -418,7 +517,7 @@
         console.error("Error loading departments:", error);
         errorMessage.textContent = `Error: ${error.message}`;
         errorMessage.style.display = "block";
-        message.style.display = "none";
+        messageElement.style.display = "none";
       }
     }
 
@@ -435,15 +534,15 @@
     }
 
     // Add time slot input
-    function addTimeSlot(start = '', end = '') {
+    function addTimeSlot(startTime = '', endTime = '') {
       const timeSlotList = document.getElementById("time-slot-list");
       const newItem = document.createElement("div");
       newItem.className = "time-slot-item";
       newItem.innerHTML = `
         <div class="time-slot-input-group">
-          <input type="time" class="time-slot-start" name="time_slots_start[]" required placeholder="Start time" value="${start}" />
+          <input type="time" class="form-group time-slot-start" name="time_slots_start[]" required value="${startTime}" />
           <span>to</span>
-          <input type="time" class="time-slot-end" name="time_slots_end[]" required placeholder="End time" value="${end}" />
+          <input type="time" class="form-group time-slot-end" name="time_slots_end[]" required value="${endTime}" />
         </div>
         <button type="button" class="remove-time-slot" onclick="this.parentElement.remove()">-</button>
       `;
@@ -468,7 +567,7 @@
 
     // Remove a holiday
     function removeHoliday(dateStr) {
-      const currentDates = holidayPicker.selectedDates.filter(date => 
+      const currentDates = holidayPicker.selectedDates.filter(date =>
         date.toISOString().split('T')[0] !== dateStr
       );
       holidayPicker.setDate(currentDates);
@@ -486,9 +585,11 @@
     async function loadDoctorData() {
       const urlParams = new URLSearchParams(window.location.search);
       const doctorId = urlParams.get('id');
+      const errorMessage = document.getElementById("error-message");
+
       if (!doctorId) {
-        document.getElementById("error-message").textContent = "No doctor ID provided.";
-        document.getElementById("error-message").style.display = "block";
+        errorMessage.textContent = "No doctor ID provided.";
+        errorMessage.style.display = "block";
         return;
       }
 
@@ -499,15 +600,17 @@
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin"
         });
+
         if (!response.ok) {
           const errDetail = await response.json().catch(() => ({}));
           throw new Error(`Failed to fetch doctor: ${errDetail.detail || response.statusText}`);
         }
+
         const doctor = await response.json();
         console.log("Fetched doctor:", doctor);
 
         // Populate form fields
-        document.getElementById("doctor_id").value = doctor.id;
+        document.getElementById("doctor_id").value = doctor.id || '';
         document.getElementById("doctor_name").value = doctor.doctor_name || "";
         document.getElementById("contact").value = doctor.contact || "";
         document.getElementById("fees").value = doctor.fees !== undefined ? doctor.fees : "";
@@ -552,17 +655,17 @@
         }
       } catch (error) {
         console.error("Error loading doctor data:", error);
-        document.getElementById("error-message").textContent = `Error: ${error.message}`;
-        document.getElementById("error-message").style.display = "block";
+        errorMessage.textContent = `Error: ${error.message}`;
+        errorMessage.style.display = "block";
       }
     }
 
     // Form submit handler
-    document.getElementById("edit-doctor-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    async function submitForm(event) {
+      event.preventDefault();
 
-      const doctor_id = document.getElementById("doctor_id").value;
-      const doctor_name = document.getElementById("doctor_name").value.trim();
+      const doctorId = document.getElementById("doctor_id").value;
+      const doctorName = document.getElementById("doctor_name").value.trim();
       const specializationInputs = document.querySelectorAll(".specialization-input");
       const specializations = Array.from(specializationInputs)
         .map(input => input.value.trim())
@@ -572,11 +675,11 @@
       const experience = parseInt(document.getElementById("experience").value);
       const departmentCheckboxes = document.querySelectorAll('input[name="departments"]:checked');
       const departments = Array.from(departmentCheckboxes).map(checkbox => checkbox.value);
-      const days_available = Array.from(document.querySelectorAll(".day-button.selected"))
+      const daysAvailable = Array.from(document.querySelectorAll(".day-button.selected"))
         .map(button => button.dataset.day);
       const timeSlotStarts = document.querySelectorAll(".time-slot-start");
       const timeSlotEnds = document.querySelectorAll(".time-slot-end");
-      const time_slots = Array.from(timeSlotStarts).map((start, index) => {
+      const timeSlots = Array.from(timeSlotStarts).map((start, index) => {
         const end = timeSlotEnds[index];
         if (start.value && end.value) {
           return `${start.value} - ${end.value}`;
@@ -585,16 +688,16 @@
       }).filter(slot => slot);
       const holidays = holidayPicker.selectedDates.map(date => date.toISOString().split('T')[0]);
 
-      const message = document.getElementById("message");
+      const messageElement = document.getElementById("message");
       const errorMessage = document.getElementById("error-message");
-      const submitBtn = e.target.querySelector('button[type="submit"]');
+      const submitButton = event.target.querySelector('button[type="submit"]');
 
       // Hide messages
-      message.style.display = "none";
+      messageElement.style.display = "none";
       errorMessage.style.display = "none";
 
       // Validation
-      if (!doctor_id) {
+      if (!doctorId) {
         errorMessage.textContent = "Doctor ID is missing.";
         errorMessage.style.display = "block";
         return;
@@ -624,12 +727,12 @@
         errorMessage.style.display = "block";
         return;
       }
-      if (days_available.length === 0) {
+      if (daysAvailable.length === 0) {
         errorMessage.textContent = "Please select at least one day of availability.";
         errorMessage.style.display = "block";
         return;
       }
-      if (time_slots.length === 0) {
+      if (timeSlots.length === 0) {
         errorMessage.textContent = "Please enter at least one valid time slot.";
         errorMessage.style.display = "block";
         return;
@@ -645,23 +748,23 @@
         }
       }
 
-      submitBtn.disabled = true;
+      submitButton.disabled = true;
 
       try {
         const doctorData = {
-          doctor_name,
+          doctor_name: doctorName,
           specializations,
           contact,
           fees,
           experience,
           departments,
-          days_available,
-          time_slots,
+          days_available: daysAvailable,
+          time_slots: timeSlots,
           holiday: holidays.length > 0 ? holidays : null
         };
-        console.log("Submitting updated doctor:", doctorData);
+        console.log("Submitting doctor:", doctorData);
 
-        const response = await fetch(`/doctor/${doctor_id}`, {
+        const response = await fetch(`/doctor/${doctorId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
@@ -669,16 +772,14 @@
         });
 
         const data = await response.json();
-        console.log("Update doctor response:", data);
+        console.log("Update response:", data);
 
         if (response.ok) {
           const successMessage = typeof data.message === 'string'
             ? data.message
-            : (data.message && typeof data.message === 'object' && data.message.text)
-              ? data.message.text
-              : JSON.stringify(data.message) || "Doctor updated successfully.";
-          message.textContent = successMessage;
-          message.style.display = "block";
+            : "Doctor updated successfully.";
+          messageElement.textContent = successMessage;
+          messageElement.style.display = "block";
           errorMessage.style.display = "none";
 
           setTimeout(() => {
@@ -687,25 +788,29 @@
         } else {
           const errorDetail = typeof data.detail === 'string'
             ? data.detail
-            : (data.detail && Array.isArray(data.detail))
-              ? data.detail.map(item => item.error || JSON.stringify(item)).join(', ')
-              : JSON.stringify(data.detail) || "Failed to update doctor.";
+            : JSON.stringify(data.detail) || "Failed to update doctor.";
           errorMessage.textContent = errorDetail;
           errorMessage.style.display = "block";
-          message.style.display = "none";
+          messageElement.style.display = "none";
         }
       } catch (error) {
         console.error("Error updating doctor:", error);
         errorMessage.textContent = `Error: ${error.message}`;
         errorMessage.style.display = "block";
-        message.style.display = "none";
+        messageElement.style.display = "none";
       } finally {
-        submitBtn.disabled = false;
+        submitButton.disabled = false;
       }
-    });
+    }
 
-    // Load doctor data and departments on page load
-    window.onload = loadDoctorData;
+    // Form submit handler
+    document.getElementById("edit-doctor-form").addEventListener("submit", submitForm);
+
+    // Load profile and doctor data on page load
+    window.onload = function() {
+      loadProfile();
+      loadDoctorData();
+    };
   </script>
 </body>
 </html>

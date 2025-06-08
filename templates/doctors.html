@@ -409,31 +409,38 @@
             const profileHospitalName = document.getElementById("profile-hospital-name");
 
             try {
+                console.log("Fetching profile from /profile");
                 const response = await fetch("/profile", {
                     method: "GET",
                     headers: { "Content-Type": "application/json" },
                     credentials: "same-origin"
                 });
 
-                if (!response.ok) throw new Error("Failed to load profile");
+                if (!response.ok) {
+                    const errDetail = await response.json().catch(() => ({}));
+                    throw new Error(`Failed to fetch profile: ${errDetail.detail || response.statusText}`);
+                }
 
                 const profile = await response.json();
+                console.log("Profile fetched:", profile);
 
-                if (profile.profile_picture_url) {
-                    profilePicture.src = profile.profile_picture_url;
+                if (profile.profile_picture) {
+                    profilePicture.src = profile.profile_picture;
                     profilePicture.style.display = "block";
                     profilePicturePlaceholder.style.display = "none";
                 } else {
-                    profilePicturePlaceholder.textContent = profile.hospital_name?.charAt(0).toUpperCase() || "?";
                     profilePicture.style.display = "none";
                     profilePicturePlaceholder.style.display = "flex";
+                    profilePicturePlaceholder.textContent = profile.hospital_name ? profile.hospital_name.charAt(0).toUpperCase() : "H";
                 }
-
-                profileHospitalName.textContent = profile.hospital_name || "Unnamed Hospital";
+                profileHospitalName.textContent = profile.hospital_name || "Default Hospital";
 
             } catch (error) {
                 console.error("Error loading profile:", error);
-                profileHospitalName.textContent = "Failed to load profile";
+                profilePicture.style.display = "none";
+                profilePicturePlaceholder.style.display = "flex";
+                profilePicturePlaceholder.textContent = "H";
+                profileHospitalName.textContent = "Default Hospital";
             }
         }
 

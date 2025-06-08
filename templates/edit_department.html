@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Edit Department</title>
+  <title>Create Department</title>
   <style>
     * {
       margin: 0;
@@ -33,6 +33,42 @@
       margin-bottom: 30px;
       text-align: center;
       letter-spacing: 1px;
+    }
+    .profile-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .profile-picture {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #ffffff;
+      margin-bottom: 10px;
+      display: none;
+    }
+    .profile-picture-placeholder {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4fb4e2;
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      border: 2px solid #ffffff;
+    }
+    .profile-hospital-name {
+      font-size: 18px;
+      font-weight: 500;
+      text-align: center;
+      word-break: break-word;
+      max-width: 240px;
     }
     .sidebar ul {
       list-style: none;
@@ -166,6 +202,18 @@
       .sidebar h2 {
         font-size: 20px;
       }
+      .profile-section {
+        margin-bottom: 20px;
+      }
+      .profile-picture, .profile-picture-placeholder {
+        width: 50px;
+        height: 50px;
+        font-size: 18px;
+      }
+      .profile-hospital-name {
+        font-size: 14px;
+        display: none;
+      }
       .sidebar ul li {
         font-size: 14px;
         padding: 10px;
@@ -183,6 +231,11 @@
 <body>
   <div class="dashboard-container">
     <div class="sidebar">
+      <div class="profile-section">
+        <img id="profile-picture" class="profile-picture" alt="Profile Picture">
+        <div id="profile-picture-placeholder" class="profile-picture-placeholder"></div>
+        <span id="profile-hospital-name" class="profile-hospital-name">Default Hospital</span>
+      </div>
       <h2>Admin Panel</h2>
       <ul>
         <li onclick="navigateTo('/dashboard')">Dashboard</li>
@@ -195,11 +248,10 @@
     </div>
     <div class="main-content">
       <div class="header">
-        <h1>Edit Department</h1>
+        <h1>Create Department</h1>
       </div>
       <div class="form-container">
-        <form id="edit-department-form">
-          <input type="hidden" id="department_id" name="department_id" />
+        <form id="create-department-form">
           <div class="form-group">
             <label for="name">Name:</label>
             <input type="text" id="name" name="name" required placeholder="Enter department name" />
@@ -208,7 +260,7 @@
             <label for="description">Description:</label>
             <textarea id="description" name="description" required placeholder="Enter department description"></textarea>
           </div>
-          <button type="submit" id="submit-btn" disabled>Update Department</button>
+          <button type="submit" id="submit-btn">Create Department</button>
         </form>
         <p id="message"></p>
         <p id="error-message"></p>
@@ -227,30 +279,15 @@
       }
     }
 
-    // Load department data
-    async function loadDepartmentData() {
-      const submitBtn = document.getElementById("submit-btn");
-      const errorMessage = document.getElementById("error-message");
-      const messageElement = document.getElementById("message");
-
-      // Clear any existing messages
-      errorMessage.style.display = "none";
-      messageElement.style.display = "none";
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const deptId = urlParams.get('id');
-      console.log('Extracted department ID from URL:', deptId);
-
-      if (!deptId || isNaN(deptId)) {
-        errorMessage.textContent = "Invalid or missing department ID.";
-        errorMessage.style.display = "block";
-        submitBtn.disabled = true;
-        return;
-      }
+    // Load profile data
+    async function loadProfile() {
+      const profilePicture = document.getElementById("profile-picture");
+      const profilePicturePlaceholder = document.getElementById("profile-picture-placeholder");
+      const profileHospitalName = document.getElementById("profile-hospital-name");
 
       try {
-        console.log(`Fetching department data from /department/${deptId}`);
-        const response = await fetch(`/department/${deptId}`, {
+        console.log("Fetching profile from /profile");
+        const response = await fetch("/profile", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin"
@@ -258,36 +295,34 @@
 
         if (!response.ok) {
           const errDetail = await response.json().catch(() => ({}));
-          const errorMsg = errDetail.detail || response.statusText || "Unknown error";
-          throw new Error(`Failed to fetch department: ${errorMsg}`);
+          throw new Error(`Failed to fetch profile: ${errDetail.detail || response.statusText}`);
         }
 
-        const department = await response.json();
-        console.log("Fetched department data:", department);
+        const profile = await response.json();
+        console.log("Profile fetched:", profile);
 
-        // Validate response structure
-        if (!department || typeof department !== 'object' || !department.id || !department.name || department.description === undefined) {
-          throw new Error("Invalid department data received from server.");
+        if (profile.profile_picture) {
+          profilePicture.src = profile.profile_picture;
+          profilePicture.style.display = "block";
+          profilePicturePlaceholder.style.display = "none";
+        } else {
+          profilePicture.style.display = "none";
+          profilePicturePlaceholder.style.display = "flex";
+          profilePicturePlaceholder.textContent = profile.hospital_name ? profile.hospital_name.charAt(0).toUpperCase() : "H";
         }
+        profileHospitalName.textContent = profile.hospital_name || "Default Hospital";
 
-        // Populate form fields
-        document.getElementById("department_id").value = department.id;
-        document.getElementById("name").value = department.name.trim();
-        document.getElementById("description").value = department.description.trim();
-
-        // Enable submit button after successful data load
-        submitBtn.disabled = false;
-        console.log("Form fields populated successfully.");
       } catch (error) {
-        console.error("Error loading department data:", error);
-        errorMessage.textContent = `Error loading department data: ${error.message}. Please try again or contact support.`;
-        errorMessage.style.display = "block";
-        submitBtn.disabled = true;
+        console.error("Error loading profile:", error);
+        profilePicture.style.display = "none";
+        profilePicturePlaceholder.style.display = "flex";
+        profilePicturePlaceholder.textContent = "H";
+        profileHospitalName.textContent = "Default Hospital";
       }
     }
 
     // Form submission handler
-    document.getElementById("edit-department-form").addEventListener("submit", async (e) => {
+    document.getElementById("create-department-form").addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const submitBtn = document.getElementById("submit-btn");
@@ -298,16 +333,10 @@
       errorMessage.style.display = "none";
       messageElement.style.display = "none";
 
-      const deptId = document.getElementById("department_id").value;
       const name = document.getElementById("name").value.trim();
       const description = document.getElementById("description").value.trim();
 
       // Client-side validation
-      if (!deptId) {
-        errorMessage.textContent = "Department ID is missing.";
-        errorMessage.style.display = "block";
-        return;
-      }
       if (!name) {
         errorMessage.textContent = "Department name is required.";
         errorMessage.style.display = "block";
@@ -323,20 +352,20 @@
 
       try {
         const deptData = { name, description };
-        console.log("Submitting updated department data:", deptData);
+        console.log("Submitting new department data:", deptData);
 
-        const response = await fetch(`/department/${deptId}`, {
-          method: "PUT",
+        const response = await fetch("/department", {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
           body: JSON.stringify(deptData),
         });
 
         const data = await response.json();
-        console.log("Update department response:", data);
+        console.log("Create department response:", data);
 
         if (response.ok) {
-          messageElement.textContent = data.message || "Department updated successfully.";
+          messageElement.textContent = data.message || "Department created successfully.";
           messageElement.style.display = "block";
           errorMessage.style.display = "none";
 
@@ -347,14 +376,14 @@
         } else {
           const errorDetail = typeof data.detail === 'string'
             ? data.detail
-            : JSON.stringify(data.detail) || "Failed to update department.";
+            : JSON.stringify(data.detail) || "Failed to create department.";
           errorMessage.textContent = errorDetail;
           errorMessage.style.display = "block";
           messageElement.style.display = "none";
         }
       } catch (error) {
-        console.error("Error updating department:", error);
-        errorMessage.textContent = error.message || "An error occurred while updating the department. Please try again.";
+        console.error("Error creating department:", error);
+        errorMessage.textContent = error.message || "An error occurred while creating the department. Please try again.";
         errorMessage.style.display = "block";
         messageElement.style.display = "none";
       } finally {
@@ -362,8 +391,10 @@
       }
     });
 
-    // Ensure DOM is loaded before running loadDepartmentData
-    document.addEventListener("DOMContentLoaded", loadDepartmentData);
+    // Ensure DOM is loaded before running loadProfile
+    document.addEventListener("DOMContentLoaded", () => {
+      loadProfile();
+    });
   </script>
 </body>
 </html>
