@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Create Doctor</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
     * {
       margin: 0;
@@ -209,7 +210,7 @@
       display: none;
     }
     .specialization-container, .time-slot-container {
-      display: 100%;
+      display: flex;
       gap: 10px;
       align-items: center;
     }
@@ -230,20 +231,14 @@
     }
     .remove-specialization, .remove-time-slot {
       background-color: #dc3545;
-      paddingiatry: 8px;
+      padding: 8px;
       width: auto;
       font-size: 14px;
     }
     .remove-specialization:hover, .remove-time-slot:hover {
       background-color: #c82333;
     }
-    .time-slot-input-group {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex: 1;
-    }
-    .time-slot-input-group input[type="time"] {
+    .time-slot-input {
       flex: 1;
     }
     @media (max-width: 768px) {
@@ -267,15 +262,22 @@
         display: none;
       }
       .sidebar ul li {
-        width: 100;
+        width: 100%;
       }
       .main-content {
-        margin-left: 280px;
+        margin-left: 80px;
         padding: 20px;
       }
       .form-container {
         padding: 20px;
       }
+    }
+    .flatpickr-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
     }
   </style>
 </head>
@@ -306,6 +308,18 @@
           <div class="form-group">
             <label for="doctor_name">Doctor Name</label>
             <input type="text" id="doctor_name" name="doctor_name" required />
+          </div>
+          <div class="form-group">
+            <label for="contact">Contact Number</label>
+            <input
+              type="text"
+              id="contact"
+              name="contact"
+              required
+              pattern="[0-9]{10}"
+              title="Enter a 10-digit phone number"
+              placeholder="Enter 10-digit phone number"
+            />
           </div>
           <div class="form-group" id="specializations-group">
             <label>Specializations</label>
@@ -371,6 +385,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script>
     // Navigation helper
     function navigateTo(url) {
@@ -495,20 +510,25 @@
       specializationList.appendChild(newItem);
     }
 
-    // Add time slot input
+    // Add time slot input with flatpickr
     function addTimeSlot() {
       const timeSlotList = document.getElementById("time-slot-list");
       const newItem = document.createElement("div");
       newItem.className = "time-slot-item";
       newItem.innerHTML = `
-        <div class="time-slot-input-group">
-          <input type="time" class="time-slot-start" name="time_slots_start[]" required placeholder="Start time" />
-          <span>to</span>
-          <input type="time" class="time-slot-end" name="time_slots_end[]" required placeholder="End time" />
-        </div>
+        <input type="text" class="time-slot-input" name="time_slots[]" required placeholder="Select time" />
         <button type="button" class="remove-time-slot" onclick="this.parentElement.remove()">-</button>
       `;
       timeSlotList.appendChild(newItem);
+
+      // Initialize flatpickr on the new input
+      flatpickr(newItem.querySelector(".time-slot-input"), {
+        enableTime: true,
+        noCalendar: true,
+        dateFormat: "h:i K",
+        time_24hr: false,
+        minuteIncrement: 15
+      });
     }
 
     // Toggle day selection
@@ -523,6 +543,7 @@
       e.preventDefault();
 
       const doctor_name = document.getElementById("doctor_name").value.trim();
+      const contact = document.getElementById("contact").value.trim();
       const specializationInputs = document.querySelectorAll(".specialization-input");
       const specializations = Array.from(specializationInputs)
         .map(input => input.value.trim())
@@ -533,15 +554,10 @@
       const departments = Array.from(departmentCheckboxes).map(checkbox => checkbox.value);
       const days_available = Array.from(document.querySelectorAll(".day-button.selected"))
         .map(button => button.dataset.day);
-      const timeSlotStarts = document.querySelectorAll(".time-slot-start");
-      const timeSlotEnds = document.querySelectorAll(".time-slot-end");
-      const time_slots = Array.from(timeSlotStarts).map((start, index) => {
-        const end = timeSlotEnds[index];
-        if (start.value && end.value) {
-          return `${start.value} - ${end.value}`;
-        }
-        return null;
-      }).filter(slot => slot);
+      const timeSlotInputs = document.querySelectorAll(".time-slot-input");
+      const time_slots = Array.from(timeSlotInputs)
+        .map(input => input.value.trim())
+        .filter(val => val);
 
       const message = document.getElementById("message");
       const errorMessage = document.getElementById("error-message");
@@ -554,6 +570,11 @@
       // Validation
       if (!doctor_name) {
         errorMessage.textContent = "Please enter the doctor's name.";
+        errorMessage.style.display = "block";
+        return;
+      }
+      if (contact.length !== 10 || !/^\d{10}$/.test(contact)) {
+        errorMessage.textContent = "Please enter a valid 10-digit contact number.";
         errorMessage.style.display = "block";
         return;
       }
@@ -587,22 +608,13 @@
         errorMessage.style.display = "block";
         return;
       }
-      // Validate time slots
-      for (let i = 0; i < timeSlotStarts.length; i++) {
-        const start = timeSlotStarts[i].value;
-        const end = timeSlotEnds[i].value;
-        if (start && end && start >= end) {
-          errorMessage.textContent = "End time must be after start time for all time slots.";
-          errorMessage.style.display = "block";
-          return;
-        }
-      }
 
       submitBtn.disabled = true;
 
       try {
         const doctorData = {
           doctor_name,
+          contact,
           specializations,
           fees,
           experience,
@@ -637,19 +649,22 @@
           document.getElementById("specialization-list").innerHTML = `
             <div class="specialization-item">
               <input type="text" class="specialization-input" name="specializations[]" required placeholder="Enter specialization" />
-              <button type="button" class="add-specialization" onclick="addSpecialization()">+</button>
+              <button type="button" class="remove-specialization" onclick="this.parentElement.remove()">-</button>
             </div>
           `;
           document.getElementById("time-slot-list").innerHTML = `
             <div class="time-slot-item">
-              <div class="time-slot-input-group">
-                <input type="time" class="time-slot-start" name="time_slots_start[]" required placeholder="Start time" />
-                <span>to</span>
-                <input type="time" class="time-slot-end" name="time_slots_end[]" required placeholder="End time" />
-              </div>
+              <input type="text" class="time-slot-input" name="time_slots[]" required placeholder="Select time" />
               <button type="button" class="remove-time-slot" onclick="this.parentElement.remove()">-</button>
             </div>
           `;
+          flatpickr(document.querySelector(".time-slot-input"), {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "h:i K",
+            time_24hr: false,
+            minuteIncrement: 15
+          });
           document.querySelectorAll(".day-button").forEach(el => el.classList.remove("selected"));
           document.querySelectorAll('input[name="departments"]').forEach(checkbox => checkbox.checked = false);
           await loadDepartments();

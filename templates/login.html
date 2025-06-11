@@ -150,21 +150,39 @@
             const password = document.getElementById("password").value;
             const errorMessage = document.getElementById("error-message");
 
+            // Reset error message
+            errorMessage.style.display = "none";
+            errorMessage.textContent = "";
+
             try {
                 const response = await fetch("/login", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ username, password })
                 });
-                const data = await response.json();
+
+                // Clone the response to allow reading the body multiple times
+                const responseClone = response.clone();
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    // Use the cloned response to read the body as text
+                    const rawText = await responseClone.text();
+                    console.error("Invalid JSON response:", rawText, "Error:", jsonError);
+                    throw new Error("Server response was not valid JSON. Please check server logs.");
+                }
+
                 if (response.ok) {
                     window.location.href = data.redirect;
                 } else {
-                    errorMessage.textContent = data.detail;
+                    errorMessage.textContent = data.detail || "Login failed. Please try again.";
                     errorMessage.style.display = "block";
                 }
             } catch (error) {
-                errorMessage.textContent = "An error occurred. Please try again.";
+                console.error("Login error:", error);
+                errorMessage.textContent = error.message || "An error occurred. Please try again.";
                 errorMessage.style.display = "block";
             }
         });

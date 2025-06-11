@@ -239,16 +239,15 @@
     .remove-specialization:hover, .remove-time-slot:hover, .remove-holiday:hover {
       background-color: #c82333;
     }
-    .time-slot-input-group {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex: 1;
-    }
-    .time-slot-input-group input[type="time"] {
+    .time-slot-input {
       flex: 1;
     }
     .flatpickr-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
       cursor: pointer;
     }
     @media (max-width: 768px) {
@@ -390,8 +389,8 @@
           </div>
           <button type="submit">Update Doctor</button>
         </form>
-        <p id="message"></p>
-        <p id="error-message"></p>
+        <p id="message" style="display: none;"></p>
+        <p id="error-message" style="display: none;"></p>
       </div>
     </div>
   </div>
@@ -399,7 +398,7 @@
   <!-- Include Flatpickr JS -->
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script>
-    // Initialize Flatpickr
+    // Initialize Flatpickr for holidays
     const holidayPicker = flatpickr("#holiday", {
       mode: "multiple",
       dateFormat: "Y-m-d",
@@ -533,20 +532,25 @@
       specializationList.appendChild(newItem);
     }
 
-    // Add time slot input
-    function addTimeSlot(startTime = '', endTime = '') {
+    // Add time slot input with flatpickr
+    function addTimeSlot(time = '') {
       const timeSlotList = document.getElementById("time-slot-list");
       const newItem = document.createElement("div");
       newItem.className = "time-slot-item";
       newItem.innerHTML = `
-        <div class="time-slot-input-group">
-          <input type="time" class="form-group time-slot-start" name="time_slots_start[]" required value="${startTime}" />
-          <span>to</span>
-          <input type="time" class="form-group time-slot-end" name="time_slots_end[]" required value="${endTime}" />
-        </div>
+        <input type="text" class="time-slot-input" name="time_slots[]" required placeholder="Select time" value="${time}" />
         <button type="button" class="remove-time-slot" onclick="this.parentElement.remove()">-</button>
       `;
       timeSlotList.appendChild(newItem);
+
+      // Initialize flatpickr on the new input
+      flatpickr(newItem.querySelector(".time-slot-input"), {
+        enableTime: true,
+        noCalendar: true,
+        dateFormat: "h:i K",
+        time_24hr: false,
+        minuteIncrement: 15
+      });
     }
 
     // Update holiday list display
@@ -588,7 +592,7 @@
       const errorMessage = document.getElementById("error-message");
 
       if (!doctorId) {
-        errorMessage.textContent = "No doctor ID provided.";
+        errorMessage.textContent = "No doctor ID provided in URL.";
         errorMessage.style.display = "block";
         return;
       }
@@ -602,60 +606,86 @@
         });
 
         if (!response.ok) {
-          const errDetail = await response.json().catch(() => ({}));
-          throw new Error(`Failed to fetch doctor: ${errDetail.detail || response.statusText}`);
+          let errorText;
+          try {
+            const errDetail = await response.json();
+            errorText = errDetail.detail || response.statusText;
+          } catch {
+            errorText = await response.text();
+            console.error("Non-JSON response:", errorText);
+          }
+          throw new Error(`Failed to fetch doctor: ${errorText} (Status: ${response.status})`);
         }
 
-        const doctor = await response.json();
+        let doctor;
+        try {
+          doctor = await response.json();
+        } catch (jsonError) {
+          const rawText = await response.text();
+          console.error("Raw response:", rawText, "JSON Error:", jsonError);
+          throw new Error(`Invalid JSON response: ${jsonError.message}. Raw response: ${rawText}`);
+        }
+
         console.log("Fetched doctor:", doctor);
 
-        // Populate form fields
+        // Populate form fields with defensive checks
         document.getElementById("doctor_id").value = doctor.id || '';
         document.getElementById("doctor_name").value = doctor.doctor_name || "";
         document.getElementById("contact").value = doctor.contact || "";
-        document.getElementById("fees").value = doctor.fees !== undefined ? doctor.fees : "";
-        document.getElementById("experience").value = doctor.experience !== undefined ? doctor.experience : "";
+        document.getElementById("fees").value = doctor.fees !== undefined && !isNaN(doctor.fees) ? doctor.fees : "";
+        document.getElementById("experience").value = doctor.experience !== undefined && !isNaN(doctor.experience) ? doctor.experience : "";
 
         // Populate specializations
         const specializationList = document.getElementById("specialization-list");
         specializationList.innerHTML = "";
-        (doctor.specializations || []).forEach(spec => addSpecialization(spec));
-        if (!doctor.specializations || doctor.specializations.length === 0) {
+        const specializations = Array.isArray(doctor.specializations) ? doctor.specializations : [];
+        specializations.forEach(spec => addSpecialization(spec));
+        if (specializations.length === 0) {
           addSpecialization();
         }
 
         // Populate departments
         await loadDepartments();
         const departmentCheckboxes = document.querySelectorAll('input[name="departments"]');
+        const doctorDepartments = Array.isArray(doctor.departments) ? doctor.departments : [];
         departmentCheckboxes.forEach(checkbox => {
-          checkbox.checked = (doctor.departments || []).includes(checkbox.value);
+          checkbox.checked = doctorDepartments.includes(checkbox.value);
         });
 
         // Populate days available
+        const doctorDays = Array.isArray(doctor.days_available) ? doctor.days_available : [];
         document.querySelectorAll(".day-button").forEach(button => {
-          button.classList.toggle("selected", (doctor.days_available || []).includes(button.dataset.day));
+          button.classList.toggle("selected", doctorDays.includes(button.dataset.day));
         });
 
         // Populate time slots
         const timeSlotList = document.getElementById("time-slot-list");
         timeSlotList.innerHTML = "";
-        (doctor.time_slots || []).forEach(slot => {
-          const [start, end] = slot.split(" - ");
-          addTimeSlot(start || "", end || "");
+        const timeSlots = Array.isArray(doctor.time_slots) ? doctor.time_slots : [];
+        timeSlots.forEach(slot => {
+          if (typeof slot === 'string') {
+            addTimeSlot(slot);
+          }
         });
-        if (!doctor.time_slots || doctor.time_slots.length === 0) {
+        if (timeSlots.length === 0) {
           addTimeSlot();
         }
 
         // Populate holidays
-        if (doctor.holiday && Array.isArray(doctor.holiday)) {
-          const holidayDates = doctor.holiday.map(date => new Date(date));
+        const holidays = Array.isArray(doctor.holiday) ? doctor.holiday : [];
+        if (holidays.length > 0) {
+          const holidayDates = holidays
+            .map(date => new Date(date))
+            .filter(date => !isNaN(date.getTime()));
           holidayPicker.setDate(holidayDates);
           updateHolidayList(holidayDates);
+        } else {
+          holidayPicker.clear();
+          updateHolidayList([]);
         }
       } catch (error) {
         console.error("Error loading doctor data:", error);
-        errorMessage.textContent = `Error: ${error.message}`;
+        errorMessage.textContent = `Error loading doctor data: ${error.message}`;
         errorMessage.style.display = "block";
       }
     }
@@ -677,15 +707,10 @@
       const departments = Array.from(departmentCheckboxes).map(checkbox => checkbox.value);
       const daysAvailable = Array.from(document.querySelectorAll(".day-button.selected"))
         .map(button => button.dataset.day);
-      const timeSlotStarts = document.querySelectorAll(".time-slot-start");
-      const timeSlotEnds = document.querySelectorAll(".time-slot-end");
-      const timeSlots = Array.from(timeSlotStarts).map((start, index) => {
-        const end = timeSlotEnds[index];
-        if (start.value && end.value) {
-          return `${start.value} - ${end.value}`;
-        }
-        return null;
-      }).filter(slot => slot);
+      const timeSlotInputs = document.querySelectorAll(".time-slot-input");
+      const timeSlots = Array.from(timeSlotInputs)
+        .map(input => input.value.trim())
+        .filter(val => val);
       const holidays = holidayPicker.selectedDates.map(date => date.toISOString().split('T')[0]);
 
       const messageElement = document.getElementById("message");
@@ -699,6 +724,11 @@
       // Validation
       if (!doctorId) {
         errorMessage.textContent = "Doctor ID is missing.";
+        errorMessage.style.display = "block";
+        return;
+      }
+      if (!doctorName) {
+        errorMessage.textContent = "Please enter the doctor's name.";
         errorMessage.style.display = "block";
         return;
       }
@@ -736,16 +766,6 @@
         errorMessage.textContent = "Please enter at least one valid time slot.";
         errorMessage.style.display = "block";
         return;
-      }
-      // Validate time slots
-      for (let i = 0; i < timeSlotStarts.length; i++) {
-        const start = timeSlotStarts[i].value;
-        const end = timeSlotEnds[i].value;
-        if (start && end && start >= end) {
-          errorMessage.textContent = "End time must be after start time for all time slots.";
-          errorMessage.style.display = "block";
-          return;
-        }
       }
 
       submitButton.disabled = true;
@@ -807,10 +827,10 @@
     document.getElementById("edit-doctor-form").addEventListener("submit", submitForm);
 
     // Load profile and doctor data on page load
-    window.onload = function() {
+    document.addEventListener("DOMContentLoaded", () => {
       loadProfile();
       loadDoctorData();
-    };
+    });
   </script>
 </body>
 </html>

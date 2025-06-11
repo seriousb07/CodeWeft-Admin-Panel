@@ -75,6 +75,41 @@ def init_default_user():
         cursor.close()
         connection.close()
 
+# Temporary endpoint to hash existing plain-text passwords
+@app.post("/hash-existing-passwords")
+async def hash_existing_passwords():
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT username, hashed_password FROM users WHERE username != 'admin'")
+        users = cursor.fetchall()
+
+        updated_users = []
+        for user in users:
+            password = user["hashed_password"]
+            if password and not password.startswith("$2b$"):
+                hashed_password = hash_password(password)
+                cursor.execute(
+                    "UPDATE users SET hashed_password = %s WHERE username = %s",
+                    (hashed_password, user["username"])
+                )
+                updated_users.append(user["username"])
+
+        connection.commit()
+        if updated_users:
+            return {"message": f"Updated passwords for users: {updated_users}"}
+        else:
+            return {"message": "No users with unhashed passwords found."}
+    except mysql.connector.Error as err:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+    finally:
+        cursor.close()
+        connection.close()
+
 # Login page
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -87,16 +122,32 @@ async def login(user: UserLogin):
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM users WHERE username = %s", (user.username,))
-    db_user = cursor.fetchone()
-    cursor.close()
-    connection.close()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE username = %s", (user.username,))
+        db_user = cursor.fetchone()
 
-    if not db_user or not verify_password(user.password, db_user["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        if not db_user:
+            raise HTTPException(status_code=401, detail="Invalid username")
 
-    return {"redirect": "/dashboard"}
+        hashed_password = db_user["hashed_password"]
+        if not hashed_password:
+            raise HTTPException(status_code=500, detail="User password not set in database")
+
+        try:
+            password_verified = verify_password(user.password, hashed_password)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Password verification failed for user {user.username}: {str(e)}")
+
+        if not password_verified:
+            raise HTTPException(status_code=401, detail="Invalid password")
+
+        return {"redirect": "/dashboard"}
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+    finally:
+        cursor.close()
+        connection.close()
 
 # Dashboard page
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -125,28 +176,35 @@ async def edit_doctor_page(request: Request, id: int):
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute(
-        """
-        SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
-        FROM doctors WHERE id = %s
-        """,
-        (id,)
-    )
-    doctor = cursor.fetchone()
-    cursor.close()
-    connection.close()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
+            FROM doctors WHERE id = %s
+            """,
+            (id,)
+        )
+        doctor = cursor.fetchone()
 
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
 
-    doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
-    doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
-    doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
-    doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
-    doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+        try:
+            doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
+            doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
+            doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
+            doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
+            doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=500, detail=f"Invalid JSON data in database: {str(e)}")
 
-    return templates.TemplateResponse("edit_doctor.html", {"request": request, "doctor": doctor})
+        return templates.TemplateResponse("edit_doctor.html", {"request": request, "doctor": doctor})
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+    finally:
+        cursor.close()
+        connection.close()
 
 # Profile endpoint (for fetching profile data)
 @app.get("/profile")
@@ -401,28 +459,35 @@ async def get_doctor(doctor_id: int):
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute(
-        """
-        SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
-        FROM doctors WHERE id = %s
-        """,
-        (doctor_id,)
-    )
-    doctor = cursor.fetchone()
-    cursor.close()
-    connection.close()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
+            FROM doctors WHERE id = %s
+            """,
+            (doctor_id,)
+        )
+        doctor = cursor.fetchone()
 
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
 
-    doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
-    doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
-    doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
-    doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
-    doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+        try:
+            doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
+            doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
+            doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
+            doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
+            doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=500, detail=f"Invalid JSON data in database: {str(e)}")
 
-    return doctor
+        return doctor
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+    finally:
+        cursor.close()
+        connection.close()
 
 # Update Doctor endpoint
 @app.put("/doctor/{doctor_id}")
@@ -449,7 +514,7 @@ async def update_doctor(doctor_id: int, doctor: DoctorUpdate):
                 json.dumps(doctor.departments),
                 json.dumps(doctor.days_available),
                 json.dumps(doctor.time_slots),
-                json.dumps(doctor.holiday) if doctor.hospital else None,
+                json.dumps(doctor.holiday) if doctor.holiday else None,
                 doctor.email,
                 doctor_id
             )
@@ -523,12 +588,16 @@ async def list_departments_json():
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute("SELECT id, name, description FROM departments")
-    departments = cursor.fetchall()
-    cursor.close()
-    connection.close()
-    return departments
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT id, name, description FROM departments")
+        departments = cursor.fetchall()
+        return departments
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+    finally:
+        cursor.close()
+        connection.close()
 
 # View All Departments as HTML page
 @app.get("/departments/list", response_class=HTMLResponse)
@@ -537,13 +606,16 @@ async def list_departments(request: Request):
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute("SELECT id, name, description FROM departments")
-    departments = cursor.fetchall()
-    cursor.close()
-    connection.close()
-
-    return templates.TemplateResponse("departments_list.html", {"request": request, "departments": departments})
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT id, name, description FROM departments")
+        departments = cursor.fetchall()
+        return templates.TemplateResponse("departments_list.html", {"request": request, "departments": departments})
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+    finally:
+        cursor.close()
+        connection.close()
 
 # List Doctors JSON endpoint for frontend fetch
 @app.get("/doctors/list-json")
@@ -552,25 +624,32 @@ async def list_doctors_json():
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute(
-        """
-        SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
-        FROM doctors
-        """
-    )
-    doctors = cursor.fetchall()
-    cursor.close()
-    connection.close()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
+            FROM doctors
+            """
+        )
+        doctors = cursor.fetchall()
 
-    for doctor in doctors:
-        doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
-        doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
-        doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
-        doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
-        doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+        for doctor in doctors:
+            try:
+                doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
+                doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
+                doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
+                doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
+                doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+            except json.JSONDecodeError as e:
+                raise HTTPException(status_code=500, detail=f"Invalid JSON data in doctor ID {doctor['id']}: {str(e)}")
 
-    return doctors
+        return doctors
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+    finally:
+        cursor.close()
+        connection.close()
 
 # List Doctors endpoint (for HTML rendering)
 @app.get("/doctors/list", response_class=HTMLResponse)
@@ -579,22 +658,29 @@ async def doctors_list(request: Request):
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute(
-        """
-        SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
-        FROM doctors
-        """
-    )
-    doctors = cursor.fetchall()
-    cursor.close()
-    connection.close()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, doctor_name, specializations, contact, fees, experience, departments, days_available, time_slots, holiday, email
+            FROM doctors
+            """
+        )
+        doctors = cursor.fetchall()
 
-    for doctor in doctors:
-        doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
-        doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
-        doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
-        doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
-        doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+        for doctor in doctors:
+            try:
+                doctor["specializations"] = json.loads(doctor["specializations"]) if doctor["specializations"] else []
+                doctor["departments"] = json.loads(doctor["departments"]) if doctor["departments"] else []
+                doctor["days_available"] = json.loads(doctor["days_available"]) if doctor["days_available"] else []
+                doctor["time_slots"] = json.loads(doctor["time_slots"]) if doctor["time_slots"] else []
+                doctor["holiday"] = json.loads(doctor["holiday"]) if doctor["holiday"] else None
+            except json.JSONDecodeError as e:
+                raise HTTPException(status_code=500, detail=f"Invalid JSON data in doctor ID {doctor['id']}: {str(e)}")
 
-    return templates.TemplateResponse("doctors_list.html", {"request": request, "doctors": doctors})
+        return templates.TemplateResponse("doctors_list.html", {"request": request, "doctors": doctors})
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+    finally:
+        cursor.close()
+        connection.close()
