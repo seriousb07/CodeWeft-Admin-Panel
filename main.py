@@ -1,12 +1,14 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import mysql.connector
 import json
 import os
+import secrets
 from datetime import datetime
 from database import get_db_connection
 from models import UserLogin, UserChangePassword
@@ -49,7 +51,13 @@ class EditProfileModel(BaseModel):
     username: str
     hospital_name: str
 
+class UserPasswordUpdate(BaseModel):
+    username: str
+    new_password: str
+
 app = FastAPI()
+# Use a secure secret key for session middleware
+app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -57,6 +65,13 @@ templates = Jinja2Templates(directory="templates")
 UPLOAD_DIR = "static/uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
+
+# Dependency to get the current user
+async def get_current_user(request: Request):
+    username = request.session.get("username")
+    if not username:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return username
 
 # Initialize default user on startup
 @app.on_event("startup")
@@ -84,7 +99,7 @@ async def hash_existing_passwords():
 
     cursor = connection.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT username, hashed_password FROM users WHERE username != 'admin'")
+        cursor.execute("SELECT username, hashed_password FROM users")
         users = cursor.fetchall()
 
         updated_users = []
@@ -110,14 +125,47 @@ async def hash_existing_passwords():
         cursor.close()
         connection.close()
 
+# New endpoint to update a user's password
+@app.post("/update-user-password")
+async def update_user_password(user_update: UserPasswordUpdate):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    cursor = connection.cursor()
+    try:
+        # Check if the user exists
+        cursor.execute("SELECT COUNT(*) FROM users WHERE username = %s", (user_update.username,))
+        if cursor.fetchone()[0] == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Hash the new password
+        hashed_password = hash_password(user_update.new_password)
+
+        # Update the user's password in the database
+        cursor.execute(
+            "UPDATE users SET hashed_password = %s WHERE username = %s",
+            (hashed_password, user_update.username)
+        )
+        connection.commit()
+        return {"message": f"Password updated successfully for user {user_update.username}"}
+    except mysql.connector.Error as err:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+    finally:
+        cursor.close()
+        connection.close()
+
 # Login page
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
+    if request.session.get("username"):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
     return templates.TemplateResponse("login.html", {"request": request})
 
-# Login endpoint
+# Login endpoint with added logging
 @app.post("/login")
-async def login(user: UserLogin):
+async def login(user: UserLogin, response: Response, request: Request):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -128,22 +176,34 @@ async def login(user: UserLogin):
         db_user = cursor.fetchone()
 
         if not db_user:
+            print(f"Login failed: Invalid username - {user.username}")
             raise HTTPException(status_code=401, detail="Invalid username")
 
         hashed_password = db_user["hashed_password"]
+        print(f"Hashed password for {user.username}: {hashed_password}")
+
         if not hashed_password:
+            print(f"Login failed: No password set for user {user.username}")
             raise HTTPException(status_code=500, detail="User password not set in database")
 
         try:
             password_verified = verify_password(user.password, hashed_password)
+            print(f"Password verification for {user.username}: {password_verified}")
         except Exception as e:
+            print(f"Password verification failed for user {user.username}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Password verification failed for user {user.username}: {str(e)}")
 
         if not password_verified:
+            print(f"Login failed: Invalid password for user {user.username}")
             raise HTTPException(status_code=401, detail="Invalid password")
+
+        # Store username in session
+        request.session["username"] = user.username
+        print(f"User {user.username} logged in successfully")
 
         return {"redirect": "/dashboard"}
     except mysql.connector.Error as err:
+        print(f"Database error during login: {str(err)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
     finally:
         cursor.close()
@@ -151,27 +211,27 @@ async def login(user: UserLogin):
 
 # Dashboard page
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request, "username": "admin"})
+async def dashboard(request: Request, current_user: str = Depends(get_current_user)):
+    return templates.TemplateResponse("dashboard.html", {"request": request, "username": current_user})
 
 # Change password page
 @app.get("/change-password", response_class=HTMLResponse)
-async def change_password_page(request: Request):
+async def change_password_page(request: Request, current_user: str = Depends(get_current_user)):
     return templates.TemplateResponse("change_password.html", {"request": request})
 
 # Departments page
 @app.get("/departments", response_class=HTMLResponse)
-async def departments_page(request: Request):
+async def departments_page(request: Request, current_user: str = Depends(get_current_user)):
     return templates.TemplateResponse("departments.html", {"request": request})
 
 # Doctors page
 @app.get("/doctors", response_class=HTMLResponse)
-async def doctors_page(request: Request):
+async def doctors_page(request: Request, current_user: str = Depends(get_current_user)):
     return templates.TemplateResponse("doctors.html", {"request": request})
 
 # Edit Doctor page
 @app.get("/edit-doctor", response_class=HTMLResponse)
-async def edit_doctor_page(request: Request, id: int):
+async def edit_doctor_page(request: Request, id: int, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -206,15 +266,15 @@ async def edit_doctor_page(request: Request, id: int):
         cursor.close()
         connection.close()
 
-# Profile endpoint (for fetching profile data)
+# Profile endpoint
 @app.get("/profile")
-async def get_profile():
+async def get_profile(current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT username, hospital_name, profile_picture FROM users WHERE username = %s", ("admin",))
+        cursor.execute("SELECT username, hospital_name, profile_picture FROM users WHERE username = %s", (current_user,))
         profile = cursor.fetchone()
         if not profile:
             raise HTTPException(status_code=404, detail="User not found")
@@ -227,19 +287,19 @@ async def get_profile():
 
 # Edit Profile page
 @app.get("/edit-profile", response_class=HTMLResponse)
-async def edit_profile_page(request: Request):
+async def edit_profile_page(request: Request, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT username, hospital_name, profile_picture FROM users WHERE username = %s", ("admin",))
+        cursor.execute("SELECT username, hospital_name, profile_picture FROM users WHERE username = %s", (current_user,))
         profile = cursor.fetchone()
+        if not profile:
+            raise HTTPException(status_code=404, detail="User not found")
         return templates.TemplateResponse("edit_profile.html", {"request": request, "profile": profile})
     except mysql.connector.Error as err:
         raise HTTPException(status_code=500, detail=f"Database error: {err}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
     finally:
         cursor.close()
         connection.close()
@@ -249,7 +309,9 @@ async def edit_profile_page(request: Request):
 async def edit_profile(
     username: str = Form(...),
     hospital_name: str = Form(...),
-    profile_picture: Optional[UploadFile] = File(None)
+    profile_picture: Optional[UploadFile] = File(None),
+    current_user: str = Depends(get_current_user),
+    request: Request = None
 ):
     connection = get_db_connection()
     if not connection:
@@ -273,11 +335,14 @@ async def edit_profile(
             SET username = %s, hospital_name = %s, profile_picture = %s
             WHERE username = %s
             """,
-            (username, hospital_name, profile_picture_path, "admin")
+            (username, hospital_name, profile_picture_path, current_user)
         )
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="User not found")
         connection.commit()
+        # Update session if username changed
+        if username != current_user:
+            request.session["username"] = username
     except mysql.connector.Error as err:
         connection.rollback()
         raise HTTPException(status_code=400, detail=f"Database error: {err}")
@@ -294,18 +359,19 @@ async def logout_page(request: Request):
 
 # Logout endpoint
 @app.post("/logout")
-async def logout(response: Response):
-    response.delete_cookie(key="session_token")
+async def logout(request: Request, response: Response):
+    request.session.clear()
+    response.delete_cookie(key="session")
     return JSONResponse(content={"message": "Logged out successfully"}, status_code=status.HTTP_200_OK)
 
 # Create Department page
 @app.get("/create-department", response_class=HTMLResponse)
-async def create_department_page(request: Request):
+async def create_department_page(request: Request, current_user: str = Depends(get_current_user)):
     return templates.TemplateResponse("create_department.html", {"request": request})
 
 # Create Department endpoint
 @app.post("/create-department")
-async def create_department(department: DepartmentCreate):
+async def create_department(department: DepartmentCreate, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -328,7 +394,7 @@ async def create_department(department: DepartmentCreate):
 
 # Edit Department page
 @app.get("/edit-department", response_class=HTMLResponse)
-async def edit_department_page(request: Request, id: int):
+async def edit_department_page(request: Request, id: int, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -346,7 +412,7 @@ async def edit_department_page(request: Request, id: int):
 
 # Get Department endpoint
 @app.get("/department/{id}")
-async def get_department(id: int):
+async def get_department(id: int, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -364,7 +430,7 @@ async def get_department(id: int):
 
 # Update Department endpoint
 @app.put("/department/{department_id}")
-async def update_department(department_id: int, department: DepartmentUpdate):
+async def update_department(department_id: int, department: DepartmentUpdate, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -389,7 +455,7 @@ async def update_department(department_id: int, department: DepartmentUpdate):
 
 # Delete Department endpoint
 @app.delete("/department/{department_id}")
-async def delete_department(department_id: int):
+async def delete_department(department_id: int, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -411,12 +477,12 @@ async def delete_department(department_id: int):
 
 # Create Doctor page
 @app.get("/create-doctor", response_class=HTMLResponse)
-async def create_doctor_page(request: Request):
+async def create_doctor_page(request: Request, current_user: str = Depends(get_current_user)):
     return templates.TemplateResponse("create_doctor.html", {"request": request})
 
 # Create Doctor endpoint
 @app.post("/create-doctor")
-async def create_doctor(doctor: DoctorCreate):
+async def create_doctor(doctor: DoctorCreate, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -454,7 +520,7 @@ async def create_doctor(doctor: DoctorCreate):
 
 # Get Doctor endpoint
 @app.get("/doctor/{doctor_id}")
-async def get_doctor(doctor_id: int):
+async def get_doctor(doctor_id: int, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -491,7 +557,7 @@ async def get_doctor(doctor_id: int):
 
 # Update Doctor endpoint
 @app.put("/doctor/{doctor_id}")
-async def update_doctor(doctor_id: int, doctor: DoctorUpdate):
+async def update_doctor(doctor_id: int, doctor: DoctorUpdate, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -534,7 +600,7 @@ async def update_doctor(doctor_id: int, doctor: DoctorUpdate):
 
 # Delete Doctor endpoint
 @app.delete("/doctor/{doctor_id}")
-async def delete_doctor(doctor_id: int):
+async def delete_doctor(doctor_id: int, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -557,13 +623,13 @@ async def delete_doctor(doctor_id: int):
 
 # Change password endpoint
 @app.post("/change-password")
-async def change_password(user: UserChangePassword):
+async def change_password(user: UserChangePassword, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
     cursor = connection.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM users WHERE username = %s", ("admin",))
+    cursor.execute("SELECT * FROM users WHERE username = %s", (current_user,))
     db_user = cursor.fetchone()
 
     if not db_user or not verify_password(user.old_password, db_user["hashed_password"]):
@@ -574,7 +640,7 @@ async def change_password(user: UserChangePassword):
     hashed_new_password = hash_password(user.new_password)
     cursor.execute(
         "UPDATE users SET hashed_password = %s WHERE username = %s",
-        (hashed_new_password, "admin")
+        (hashed_new_password, current_user)
     )
     connection.commit()
     cursor.close()
@@ -582,9 +648,9 @@ async def change_password(user: UserChangePassword):
 
     return {"message": "Password changed successfully"}
 
-# List Departments API endpoint for frontend fetch
+# List Departments API endpoint
 @app.get("/departments/list-json")
-async def list_departments_json():
+async def list_departments_json(current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -601,7 +667,7 @@ async def list_departments_json():
 
 # View All Departments as HTML page
 @app.get("/departments/list", response_class=HTMLResponse)
-async def list_departments(request: Request):
+async def list_departments(request: Request, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -617,9 +683,9 @@ async def list_departments(request: Request):
         cursor.close()
         connection.close()
 
-# List Doctors JSON endpoint for frontend fetch
+# List Doctors JSON endpoint
 @app.get("/doctors/list-json")
-async def list_doctors_json():
+async def list_doctors_json(current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -651,9 +717,9 @@ async def list_doctors_json():
         cursor.close()
         connection.close()
 
-# List Doctors endpoint (for HTML rendering)
+# List Doctors endpoint (HTML)
 @app.get("/doctors/list", response_class=HTMLResponse)
-async def doctors_list(request: Request):
+async def doctors_list(request: Request, current_user: str = Depends(get_current_user)):
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection failed")

@@ -7,7 +7,7 @@ def get_db_connection():
             host="localhost",
             user="root",  # Replace with your MySQL username
             password="",  # Replace with your MySQL password
-            database="user_auth"
+            database="admin_dashboard"
         )
         return connection
     except Error as e:
